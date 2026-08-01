@@ -562,37 +562,36 @@ function AdminDashboardContent() {
         </div>
       )}
 
-      {/* Stats Grid Header */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Total Users", value: String(usersList.length), change: "Live Sync", icon: Users, color: "from-emerald-500 to-emerald-600" },
-          { label: "Pending Approvals", value: String(pendingUsersList.length), change: "Review Required", icon: UserCheck, color: "from-amber-500 to-amber-600" },
-          { label: "Active Programs", value: String(programsList.length), change: "Program Builder", icon: GraduationCap, color: "from-teal-500 to-teal-600" },
-          { label: "Donations", value: formatCurrency(totalDonations), change: `${donationsList.length} Raised`, icon: DollarSign, color: "from-gold-500 to-gold-600" },
-        ].map((stat) => (
-          <Card key={stat.label} className="relative overflow-hidden group">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-sand-500 mb-1">{stat.label}</p>
-                <p className="text-2xl font-bold text-sand-900">{stat.value}</p>
-                <div className="flex items-center gap-1 mt-2">
-                  <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-                  <span className="text-xs font-medium text-emerald-600">{stat.change}</span>
-                </div>
-              </div>
-              <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
-                <stat.icon className="h-5 w-5 text-white" />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
       {/* Horizontal Tabs Removed - Using Sidebar Navigation */}
 
       {/* Overview Tab */}
       {activeTab === "overview" && (
         <div className="space-y-6">
+          {/* Stats Grid Header */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: "Total Users", value: String(usersList.length), change: "Live Sync", icon: Users, color: "from-emerald-500 to-emerald-600" },
+              { label: "Pending Approvals", value: String(pendingUsersList.length), change: "Review Required", icon: UserCheck, color: "from-amber-500 to-amber-600" },
+              { label: "Active Programs", value: String(programsList.length), change: "Program Builder", icon: GraduationCap, color: "from-teal-500 to-teal-600" },
+              { label: "Donations", value: formatCurrency(totalDonations), change: `${donationsList.length} Raised`, icon: DollarSign, color: "from-gold-500 to-gold-600" },
+            ].map((stat) => (
+              <Card key={stat.label} className="relative overflow-hidden group">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm text-sand-500 mb-1">{stat.label}</p>
+                    <p className="text-2xl font-bold text-sand-900">{stat.value}</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+                      <span className="text-xs font-medium text-emerald-600">{stat.change}</span>
+                    </div>
+                  </div>
+                  <div className={`h-12 w-12 rounded-2xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
+                    <stat.icon className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
           <div className="flex flex-wrap items-center gap-3 p-4 rounded-2xl bg-white border border-sand-200 shadow-sm">
             <span className="text-xs font-bold uppercase tracking-wider text-sand-400 mr-2">
               Quick Admin Actions:
