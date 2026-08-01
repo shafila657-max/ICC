@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Hero from "@/components/landing/Hero";
 import About from "@/components/landing/About";
+import SubOrganisations from "@/components/landing/SubOrganisations";
 import Programs from "@/components/landing/Programs";
 import Events from "@/components/landing/Events";
 import Donations from "@/components/landing/Donations";
@@ -31,6 +32,7 @@ export default async function HomePage() {
       <main className="flex-1">
         <Hero />
         <About />
+        <SubOrganisations />
         <Programs programsList={programsData} />
         <Events eventsList={eventsData} />
         <Donations />

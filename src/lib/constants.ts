@@ -180,13 +180,15 @@ export const STATS = [
 
 /* ===== Navigation ===== */
 export const NAV_LINKS = [
-  { label: "Home", href: "#hero" },
-  { label: "About", href: "#about" },
-  { label: "Programs", href: "#programs" },
-  { label: "Events", href: "#events" },
-  { label: "Gallery", href: "#gallery" },
-  { label: "Donate", href: "#donate" },
-  { label: "Contact", href: "#contact" },
+  { label: "Home", href: "/#hero" },
+  { label: "About", href: "/#about" },
+  { label: "Programs", href: "/#programs" },
+  { label: "ACSA (Students)", href: "/acsa" },
+  { label: "ASMAR (Alumni)", href: "/asmar" },
+  { label: "Events", href: "/#events" },
+  { label: "Gallery", href: "/#gallery" },
+  { label: "Donate", href: "/#donate" },
+  { label: "Contact", href: "/#contact" },
 ];
 
 export const DONATION_CATEGORIES = [
