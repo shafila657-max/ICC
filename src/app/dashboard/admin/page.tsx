@@ -11,10 +11,10 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Eye,
   Search,
   AlertCircle,
   ArrowUpRight,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Card,
@@ -72,6 +72,8 @@ export default function AdminDashboard() {
   const [showGalleryModal, setShowGalleryModal] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   // Live Backend Data States
   const [usersList, setUsersList] = useState<Profile[]>(MOCK_USERS);
@@ -103,42 +105,50 @@ export default function AdminDashboard() {
   const [galleryCategory, setGalleryCategory] = useState("Events");
   const [galleryUrl, setGalleryUrl] = useState("");
 
+  const refreshAllData = async () => {
+    const dbUsers = await fetchUserProfiles();
+    if (dbUsers.length > 0) setUsersList(dbUsers);
+
+    const dbAnn = await fetchAnnouncements("admin");
+    if (dbAnn.length > 0) setAnnouncementsList(dbAnn);
+
+    const dbEvents = await fetchEvents();
+    if (dbEvents.length > 0) setEventsList(dbEvents);
+
+    const dbGallery = await fetchGalleryItems();
+    if (dbGallery.length > 0) setGalleryList(dbGallery);
+
+    const dbDonations = await fetchDonations();
+    if (dbDonations.length > 0) setDonationsList(dbDonations);
+  };
+
   useEffect(() => {
-    async function loadBackendData() {
-      const dbUsers = await fetchUserProfiles();
-      if (dbUsers.length > 0) setUsersList(dbUsers);
-
-      const dbAnn = await fetchAnnouncements("admin");
-      if (dbAnn.length > 0) setAnnouncementsList(dbAnn);
-
-      const dbEvents = await fetchEvents();
-      if (dbEvents.length > 0) setEventsList(dbEvents);
-
-      const dbGallery = await fetchGalleryItems();
-      if (dbGallery.length > 0) setGalleryList(dbGallery);
-
-      const dbDonations = await fetchDonations();
-      if (dbDonations.length > 0) setDonationsList(dbDonations);
-    }
-    loadBackendData();
+    refreshAllData();
   }, []);
+
+  const triggerFeedback = (type: "success" | "error", message: string) => {
+    setActionFeedback({ type, message });
+    setTimeout(() => setActionFeedback(null), 4000);
+  };
 
   /* ===== User Handlers ===== */
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newProfile: Partial<Profile> = {
+    setIsSubmitting(true);
+    const result = await createUserProfile({
       full_name: userName,
       email: userEmail,
       role: userRole,
-      is_active: true,
-      created_at: new Date().toISOString().split("T")[0],
-    };
+    });
 
-    const result = await createUserProfile(newProfile);
+    setIsSubmitting(false);
+
     if (result.success) {
-      setUsersList([result.data || ({ ...newProfile, id: String(Date.now()) } as Profile), ...usersList]);
+      triggerFeedback("success", "User profile created successfully!");
+      if (result.data) setUsersList([result.data, ...usersList]);
+      else refreshAllData();
     } else {
-      setUsersList([{ ...newProfile, id: String(Date.now()) } as Profile, ...usersList]);
+      triggerFeedback("error", result.error || "Failed to create user profile");
     }
 
     setShowUserModal(false);
@@ -148,54 +158,82 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteUser = async (id: string) => {
-    await deleteUserProfile(id);
-    setUsersList(usersList.filter((u) => u.id !== id));
+    const result = await deleteUserProfile(id);
+    if (result.success) {
+      triggerFeedback("success", "User deleted");
+      setUsersList(usersList.filter((u) => u.id !== id));
+    } else {
+      triggerFeedback("error", result.error || "Failed to delete user");
+    }
   };
 
   const handleRoleToggle = async (id: string, currentRole: UserRole) => {
     const nextRole: UserRole = currentRole === "student" ? "alumni" : currentRole === "alumni" ? "admin" : "student";
-    await updateUserRole(id, nextRole);
-    setUsersList(usersList.map((u) => (u.id === id ? { ...u, role: nextRole } : u)));
+    const result = await updateUserRole(id, nextRole);
+    if (result.success) {
+      triggerFeedback("success", `Role updated to ${nextRole}`);
+      setUsersList(usersList.map((u) => (u.id === id ? { ...u, role: nextRole } : u)));
+    } else {
+      triggerFeedback("error", result.error || "Failed to update role");
+    }
   };
 
   /* ===== Announcement Handlers ===== */
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newAnn: Partial<Announcement> = {
+    setIsSubmitting(true);
+    const result = await createAnnouncement({
       title: annTitle,
       content: annContent,
       priority: annPriority,
       target_role: annTarget,
-      is_published: true,
-      created_at: new Date().toISOString().split("T")[0],
-    };
+    });
+    setIsSubmitting(false);
 
-    const result = await createAnnouncement(newAnn);
-    setAnnouncementsList([result.data || ({ ...newAnn, id: String(Date.now()) } as Announcement), ...announcementsList]);
+    if (result.success) {
+      triggerFeedback("success", "Announcement published!");
+      if (result.data) setAnnouncementsList([result.data, ...announcementsList]);
+      else refreshAllData();
+    } else {
+      triggerFeedback("error", result.error || "Failed to publish announcement");
+    }
+
     setShowAnnouncementModal(false);
     setAnnTitle("");
     setAnnContent("");
   };
 
   const handleDeleteAnnouncement = async (id: string) => {
-    await deleteAnnouncement(id);
-    setAnnouncementsList(announcementsList.filter((a) => a.id !== id));
+    const result = await deleteAnnouncement(id);
+    if (result.success) {
+      triggerFeedback("success", "Announcement deleted");
+      setAnnouncementsList(announcementsList.filter((a) => a.id !== id));
+    } else {
+      triggerFeedback("error", result.error || "Failed to delete announcement");
+    }
   };
 
   /* ===== Event Handlers ===== */
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newEv: Partial<EventItem> = {
+    setIsSubmitting(true);
+    const result = await createEvent({
       title: eventTitle,
       description: eventDesc,
       date: eventDate,
       time: eventTime,
       location: eventLoc,
-      is_featured: false,
-    };
+    });
+    setIsSubmitting(false);
 
-    const result = await createEvent(newEv);
-    setEventsList([result.data || ({ ...newEv, id: String(Date.now()) } as EventItem), ...eventsList]);
+    if (result.success) {
+      triggerFeedback("success", "Event created!");
+      if (result.data) setEventsList([result.data, ...eventsList]);
+      else refreshAllData();
+    } else {
+      triggerFeedback("error", result.error || "Failed to create event");
+    }
+
     setShowEventModal(false);
     setEventTitle("");
     setEventDesc("");
@@ -205,30 +243,47 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteEvent = async (id: string) => {
-    await deleteEvent(id);
-    setEventsList(eventsList.filter((ev) => ev.id !== id));
+    const result = await deleteEvent(id);
+    if (result.success) {
+      triggerFeedback("success", "Event deleted");
+      setEventsList(eventsList.filter((ev) => ev.id !== id));
+    } else {
+      triggerFeedback("error", result.error || "Failed to delete event");
+    }
   };
 
   /* ===== Gallery Handlers ===== */
   const handleCreateGallery = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newItem: Partial<GalleryItem> = {
+    setIsSubmitting(true);
+    const result = await createGalleryItem({
       title: galleryTitle,
       category: galleryCategory,
       image_url: galleryUrl || "/gallery/iftar.jpg",
-      created_at: new Date().toISOString().split("T")[0],
-    };
+    });
+    setIsSubmitting(false);
 
-    const result = await createGalleryItem(newItem);
-    setGalleryList([result.data || ({ ...newItem, id: String(Date.now()) } as GalleryItem), ...galleryList]);
+    if (result.success) {
+      triggerFeedback("success", "Gallery photo added!");
+      if (result.data) setGalleryList([result.data, ...galleryList]);
+      else refreshAllData();
+    } else {
+      triggerFeedback("error", result.error || "Failed to add gallery photo");
+    }
+
     setShowGalleryModal(false);
     setGalleryTitle("");
     setGalleryUrl("");
   };
 
   const handleDeleteGallery = async (id: string) => {
-    await deleteGalleryItem(id);
-    setGalleryList(galleryList.filter((g) => g.id !== id));
+    const result = await deleteGalleryItem(id);
+    if (result.success) {
+      triggerFeedback("success", "Photo deleted");
+      setGalleryList(galleryList.filter((g) => g.id !== id));
+    } else {
+      triggerFeedback("error", result.error || "Failed to delete photo");
+    }
   };
 
   /* ===== Calculations ===== */
@@ -243,6 +298,29 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+      {/* Feedback Banner */}
+      {actionFeedback && (
+        <div
+          className={`p-4 rounded-xl flex items-center justify-between text-sm font-medium ${
+            actionFeedback.type === "success"
+              ? "bg-emerald-50 border border-emerald-200 text-emerald-800"
+              : "bg-red-50 border border-red-200 text-red-800"
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {actionFeedback.type === "success" ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+            )}
+            <span>{actionFeedback.message}</span>
+          </div>
+          <button onClick={() => setActionFeedback(null)} className="text-xs underline font-bold cursor-pointer">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
@@ -566,7 +644,9 @@ export default function AdminDashboard() {
               { value: "admin", label: "Admin" },
             ]}
           />
-          <Button type="submit" className="w-full">Create User Profile</Button>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create User Profile"}
+          </Button>
         </form>
       </Modal>
 
@@ -601,7 +681,9 @@ export default function AdminDashboard() {
               ]}
             />
           </div>
-          <Button type="submit" className="w-full">Publish Announcement</Button>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Publishing..." : "Publish Announcement"}
+          </Button>
         </form>
       </Modal>
 
@@ -619,7 +701,9 @@ export default function AdminDashboard() {
             <Input label="Time" type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} required />
           </div>
           <Input label="Location" placeholder="Event venue" value={eventLoc} onChange={(e) => setEventLoc(e.target.value)} required />
-          <Button type="submit" className="w-full">Create Event</Button>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create Event"}
+          </Button>
         </form>
       </Modal>
 
@@ -633,7 +717,9 @@ export default function AdminDashboard() {
           <Input label="Title" placeholder="Photo title" value={galleryTitle} onChange={(e) => setGalleryTitle(e.target.value)} required />
           <Input label="Category" placeholder="e.g. Events, Education, Youth" value={galleryCategory} onChange={(e) => setGalleryCategory(e.target.value)} required />
           <Input label="Image URL" placeholder="https://example.com/photo.jpg" value={galleryUrl} onChange={(e) => setGalleryUrl(e.target.value)} />
-          <Button type="submit" className="w-full">Add Gallery Photo</Button>
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Adding..." : "Add Gallery Photo"}
+          </Button>
         </form>
       </Modal>
     </div>
