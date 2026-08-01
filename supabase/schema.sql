@@ -1,16 +1,16 @@
 -- =============================================
--- Islamic Charity Center (ICC) - Database Schema
--- Supabase PostgreSQL with RLS
+-- Islamic Charity Center (ICC) - PostgreSQL Database Schema
+-- Supabase RLS Policies & Triggers
 -- =============================================
 
--- ===== Custom Types =====
+-- ===== Custom Types & Enums =====
 CREATE TYPE user_role AS ENUM ('admin', 'student', 'alumni');
 CREATE TYPE announcement_priority AS ENUM ('low', 'medium', 'high');
 CREATE TYPE donation_category AS ENUM ('zakat', 'sadaqah', 'fitrah', 'general');
 CREATE TYPE program_category AS ENUM ('education', 'relief', 'youth', 'quran');
 
--- ===== Profiles =====
-CREATE TABLE profiles (
+-- ===== User Profiles =====
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   full_name TEXT NOT NULL DEFAULT '',
@@ -26,7 +26,7 @@ CREATE TABLE profiles (
 );
 
 -- ===== Programs =====
-CREATE TABLE programs (
+CREATE TABLE IF NOT EXISTS programs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
@@ -37,7 +37,7 @@ CREATE TABLE programs (
 );
 
 -- ===== Events =====
-CREATE TABLE events (
+CREATE TABLE IF NOT EXISTS events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
@@ -52,19 +52,19 @@ CREATE TABLE events (
 );
 
 -- ===== Announcements =====
-CREATE TABLE announcements (
+CREATE TABLE IF NOT EXISTS announcements (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   content TEXT NOT NULL DEFAULT '',
   priority announcement_priority DEFAULT 'low',
   target_role TEXT DEFAULT 'all', -- 'all', 'student', 'alumni', 'admin'
-  is_published BOOLEAN DEFAULT false,
+  is_published BOOLEAN DEFAULT true,
   author_id UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ===== Donations =====
-CREATE TABLE donations (
+CREATE TABLE IF NOT EXISTS donations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   donor_name TEXT NOT NULL,
   donor_email TEXT NOT NULL,
@@ -72,57 +72,76 @@ CREATE TABLE donations (
   category donation_category DEFAULT 'general',
   message TEXT,
   is_anonymous BOOLEAN DEFAULT false,
-  stripe_payment_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ===== Gallery =====
-CREATE TABLE gallery_items (
+CREATE TABLE IF NOT EXISTS gallery_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   image_url TEXT NOT NULL,
-  category TEXT DEFAULT 'General',
+  category TEXT DEFAULT 'Events',
   description TEXT,
-  uploaded_by UUID REFERENCES profiles(id),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ===== Courses =====
-CREATE TABLE courses (
+CREATE TABLE IF NOT EXISTS courses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
   instructor TEXT NOT NULL,
   schedule TEXT,
   materials_url TEXT,
+  progress INT DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ===== Course Enrollments =====
-CREATE TABLE course_enrollments (
+-- ===== Testimonials =====
+CREATE TABLE IF NOT EXISTS testimonials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  progress INT DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
-  enrolled_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(student_id, course_id)
+  name TEXT NOT NULL,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  rating INT DEFAULT 5 CHECK (rating >= 1 AND rating <= 5),
+  avatar_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ===== Event Registrations / RSVPs =====
+CREATE TABLE IF NOT EXISTS event_registrations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ===== Contact Messages =====
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  subject TEXT,
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ===== Alumni Updates =====
-CREATE TABLE alumni_updates (
+CREATE TABLE IF NOT EXISTS alumni_updates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  author_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  author_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  author_name TEXT NOT NULL,
   content TEXT NOT NULL,
-  likes_count INT DEFAULT 0,
+  likes INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- =============================================
--- TRIGGERS
+-- TRIGGERS & AUTOMATION
 -- =============================================
 
--- Auto-create profile on user signup
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -137,30 +156,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW
   EXECUTE FUNCTION handle_new_user();
 
--- Auto-update updated_at
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER profiles_updated_at
-  BEFORE UPDATE ON profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at();
-
 -- =============================================
--- ROW LEVEL SECURITY (RLS)
+-- ROW LEVEL SECURITY (RLS) POLICIES
 -- =============================================
 
--- Enable RLS on all tables
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE programs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE events ENABLE ROW LEVEL SECURITY;
@@ -168,144 +173,54 @@ ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE donations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE gallery_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
-ALTER TABLE course_enrollments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE testimonials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alumni_updates ENABLE ROW LEVEL SECURITY;
 
--- ===== Helper function: get user role =====
-CREATE OR REPLACE FUNCTION get_user_role()
-RETURNS user_role AS $$
-  SELECT role FROM profiles WHERE id = auth.uid();
+-- Public READ Policies
+CREATE POLICY "Public read programs" ON programs FOR SELECT USING (is_active = true);
+CREATE POLICY "Public read events" ON events FOR SELECT USING (true);
+CREATE POLICY "Public read announcements" ON announcements FOR SELECT USING (is_published = true);
+CREATE POLICY "Public read gallery_items" ON gallery_items FOR SELECT USING (true);
+CREATE POLICY "Public read courses" ON courses FOR SELECT USING (is_active = true);
+CREATE POLICY "Public read testimonials" ON testimonials FOR SELECT USING (true);
+CREATE POLICY "Public read profiles" ON profiles FOR SELECT USING (true);
+
+-- Public INSERT Policies (Forms & Registrations)
+CREATE POLICY "Public insert donations" ON donations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public insert event_registrations" ON event_registrations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public insert contact_messages" ON contact_messages FOR INSERT WITH CHECK (true);
+
+-- Admin CRUD Policies
+CREATE OR REPLACE FUNCTION is_admin() RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin'
+  );
 $$ LANGUAGE sql SECURITY DEFINER STABLE;
 
--- ===== Profiles Policies =====
-CREATE POLICY "Users can view all profiles"
-  ON profiles FOR SELECT
-  TO authenticated
-  USING (true);
-
-CREATE POLICY "Users can update own profile"
-  ON profiles FOR UPDATE
-  TO authenticated
-  USING (id = auth.uid());
-
-CREATE POLICY "Admins can manage all profiles"
-  ON profiles FOR ALL
-  TO authenticated
-  USING (get_user_role() = 'admin');
-
--- ===== Programs Policies =====
-CREATE POLICY "Anyone can view active programs"
-  ON programs FOR SELECT
-  USING (is_active = true);
-
-CREATE POLICY "Admins can manage programs"
-  ON programs FOR ALL
-  TO authenticated
-  USING (get_user_role() = 'admin');
-
--- ===== Events Policies =====
-CREATE POLICY "Anyone can view events"
-  ON events FOR SELECT
-  USING (true);
-
-CREATE POLICY "Admins can manage events"
-  ON events FOR ALL
-  TO authenticated
-  USING (get_user_role() = 'admin');
-
--- ===== Announcements Policies =====
-CREATE POLICY "Users can view published announcements for their role"
-  ON announcements FOR SELECT
-  TO authenticated
-  USING (
-    is_published = true AND
-    (target_role = 'all' OR target_role = get_user_role()::text)
-  );
-
-CREATE POLICY "Admins can manage announcements"
-  ON announcements FOR ALL
-  TO authenticated
-  USING (get_user_role() = 'admin');
-
--- ===== Donations Policies =====
-CREATE POLICY "Anyone can insert donations"
-  ON donations FOR INSERT
-  WITH CHECK (true);
-
-CREATE POLICY "Admins can view all donations"
-  ON donations FOR SELECT
-  TO authenticated
-  USING (get_user_role() = 'admin');
-
--- ===== Gallery Policies =====
-CREATE POLICY "Anyone can view gallery"
-  ON gallery_items FOR SELECT
-  USING (true);
-
-CREATE POLICY "Admins can manage gallery"
-  ON gallery_items FOR ALL
-  TO authenticated
-  USING (get_user_role() = 'admin');
-
--- ===== Courses Policies =====
-CREATE POLICY "Anyone can view courses"
-  ON courses FOR SELECT
-  USING (is_active = true);
-
-CREATE POLICY "Admins can manage courses"
-  ON courses FOR ALL
-  TO authenticated
-  USING (get_user_role() = 'admin');
-
--- ===== Course Enrollments Policies =====
-CREATE POLICY "Students can view own enrollments"
-  ON course_enrollments FOR SELECT
-  TO authenticated
-  USING (student_id = auth.uid());
-
-CREATE POLICY "Students can enroll themselves"
-  ON course_enrollments FOR INSERT
-  TO authenticated
-  WITH CHECK (student_id = auth.uid());
-
-CREATE POLICY "Admins can manage enrollments"
-  ON course_enrollments FOR ALL
-  TO authenticated
-  USING (get_user_role() = 'admin');
-
--- ===== Alumni Updates Policies =====
-CREATE POLICY "Alumni and admins can view updates"
-  ON alumni_updates FOR SELECT
-  TO authenticated
-  USING (get_user_role() IN ('alumni', 'admin'));
-
-CREATE POLICY "Alumni can post updates"
-  ON alumni_updates FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    author_id = auth.uid() AND
-    get_user_role() = 'alumni'
-  );
-
-CREATE POLICY "Authors can edit own updates"
-  ON alumni_updates FOR UPDATE
-  TO authenticated
-  USING (author_id = auth.uid());
-
-CREATE POLICY "Admins can manage all updates"
-  ON alumni_updates FOR ALL
-  TO authenticated
-  USING (get_user_role() = 'admin');
+CREATE POLICY "Admin manage programs" ON programs FOR ALL USING (is_admin());
+CREATE POLICY "Admin manage events" ON events FOR ALL USING (is_admin());
+CREATE POLICY "Admin manage announcements" ON announcements FOR ALL USING (is_admin());
+CREATE POLICY "Admin manage gallery_items" ON gallery_items FOR ALL USING (is_admin());
+CREATE POLICY "Admin manage courses" ON courses FOR ALL USING (is_admin());
+CREATE POLICY "Admin view donations" ON donations FOR SELECT USING (is_admin());
+CREATE POLICY "Admin view contact_messages" ON contact_messages FOR SELECT USING (is_admin());
 
 -- =============================================
--- STORAGE BUCKETS (run in Supabase Dashboard)
+-- SEED DATA INSERTS
 -- =============================================
--- INSERT INTO storage.buckets (id, name, public) VALUES ('gallery-images', 'gallery-images', true);
--- INSERT INTO storage.buckets (id, name, public) VALUES ('event-images', 'event-images', true);
--- INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true);
 
--- Storage policies
--- CREATE POLICY "Anyone can view gallery images" ON storage.objects FOR SELECT USING (bucket_id = 'gallery-images');
--- CREATE POLICY "Admins can upload gallery images" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'gallery-images' AND get_user_role() = 'admin');
--- CREATE POLICY "Anyone can view avatars" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
--- CREATE POLICY "Users can upload own avatar" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
+INSERT INTO programs (title, description, category, is_active) VALUES
+  ('Quranic Studies', 'Comprehensive Quran memorization and Tajweed classes for all ages with certified scholars.', 'quran', true),
+  ('Youth Leadership', 'Empowering young Muslims with leadership skills, Islamic values, and community service.', 'youth', true),
+  ('Community Relief', 'Emergency aid, food distribution, and housing support for families in need.', 'relief', true),
+  ('Islamic Education', 'Weekend Islamic school covering Fiqh, Seerah, Arabic language, and Islamic history.', 'education', true)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO courses (title, description, instructor, schedule, progress) VALUES
+  ('Tajweed Fundamentals', 'Master the rules of Quran recitation with proper pronunciation.', 'Sheikh Ahmad', 'Mon & Wed, 6–7 PM', 65),
+  ('Arabic Language I', 'Beginner Arabic covering reading, writing, and basic conversation.', 'Ustadha Noor', 'Tue & Thu, 5–6 PM', 40),
+  ('Islamic History', 'Journey through the golden age of Islam and key historical events.', 'Dr. Yusuf Ali', 'Saturday, 10–12 PM', 80),
+  ('Fiqh of Worship', 'Understanding the rulings of prayer, fasting, zakat and hajj.', 'Mufti Bilal', 'Sunday, 2–4 PM', 25)
+ON CONFLICT DO NOTHING;

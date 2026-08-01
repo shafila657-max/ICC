@@ -10,8 +10,9 @@ export interface Profile {
   bio?: string;
   graduation_year?: number;
   batch?: string;
+  is_active?: boolean;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 export interface Program {
@@ -36,6 +37,8 @@ export interface Event {
   max_attendees?: number;
   created_at: string;
 }
+
+export type EventItem = Event;
 
 export interface Announcement {
   id: string;

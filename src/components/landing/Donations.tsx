@@ -6,7 +6,6 @@ import {
   Scale,
   Moon,
   HandHeart,
-  ArrowRight,
   Shield,
   CheckCircle2,
   Sparkles,
@@ -14,15 +13,14 @@ import {
 import {
   Container,
   SectionHeading,
-  Card,
   Button,
-  Badge,
   ProgressBar,
   Modal,
   Input,
 } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { DONATION_PRESETS } from "@/lib/constants";
+import { recordDonation } from "@/lib/supabase/api";
 
 const CATEGORIES = [
   {
@@ -78,11 +76,38 @@ const FEATURED_CAUSES = [
 
 export default function Donations() {
   const [showModal, setShowModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("general");
+  const [selectedCategory, setSelectedCategory] = useState<any>("general");
   const [selectedAmount, setSelectedAmount] = useState<number | null>(100);
   const [customAmount, setCustomAmount] = useState("");
+  const [donorName, setDonorName] = useState("");
+  const [donorEmail, setDonorEmail] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
 
   const activeAmount = selectedAmount || Number(customAmount) || 0;
+
+  const handleDonationSubmit = async () => {
+    if (activeAmount <= 0) return;
+    setStatus("submitting");
+
+    await recordDonation({
+      donor_name: isAnonymous ? "Anonymous" : donorName || "Supporter",
+      donor_email: donorEmail || "donor@example.com",
+      amount: activeAmount,
+      category: selectedCategory,
+      is_anonymous: isAnonymous,
+    });
+
+    setStatus("success");
+    setTimeout(() => {
+      setShowModal(false);
+      setStatus("idle");
+      setCustomAmount("");
+      setSelectedAmount(100);
+      setDonorName("");
+      setDonorEmail("");
+    }, 2000);
+  };
 
   return (
     <section id="donate" className="section-padding relative overflow-hidden">
@@ -184,94 +209,126 @@ export default function Donations() {
         onClose={() => setShowModal(false)}
         title="Make a Donation"
       >
-        <div className="space-y-6">
-          {/* Category Selection */}
-          <div>
-            <label className="block text-sm font-medium text-sand-700 mb-3">
-              Donation Type
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all text-sm cursor-pointer ${
-                    selectedCategory === cat.id
-                      ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                      : "border-sand-200 text-sand-600 hover:border-sand-300"
-                  }`}
-                >
-                  <cat.icon className="h-4 w-4" />
-                  {cat.label}
-                </button>
-              ))}
-            </div>
+        {status === "success" ? (
+          <div className="p-6 text-center space-y-3">
+            <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto" />
+            <h4 className="text-xl font-bold text-sand-900">JazakAllah Khair!</h4>
+            <p className="text-sm text-sand-500">
+              Your donation of {formatCurrency(activeAmount)} has been received. Tax receipt sent to {donorEmail || "your email"}.
+            </p>
           </div>
-
-          {/* Amount Selection */}
-          <div>
-            <label className="block text-sm font-medium text-sand-700 mb-3">
-              Select Amount
-            </label>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              {DONATION_PRESETS.map((amount) => (
-                <button
-                  key={amount}
-                  onClick={() => {
-                    setSelectedAmount(amount);
-                    setCustomAmount("");
-                  }}
-                  className={`py-3 rounded-xl font-semibold transition-all cursor-pointer ${
-                    selectedAmount === amount
-                      ? "btn-gradient text-white"
-                      : "bg-sand-100 text-sand-700 hover:bg-sand-200"
-                  }`}
-                >
-                  ${amount}
-                </button>
-              ))}
+        ) : (
+          <div className="space-y-4">
+            {/* Category Selection */}
+            <div>
+              <label className="block text-sm font-medium text-sand-700 mb-2">
+                Donation Type
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`flex items-center gap-2 p-2.5 rounded-xl border-2 transition-all text-xs cursor-pointer font-medium ${
+                      selectedCategory === cat.id
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                        : "border-sand-200 text-sand-600 hover:border-sand-300"
+                    }`}
+                  >
+                    <cat.icon className="h-4 w-4" />
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <Input
-              placeholder="Custom amount"
-              type="number"
-              value={customAmount}
-              onChange={(e) => {
-                setCustomAmount(e.target.value);
-                setSelectedAmount(null);
-              }}
-            />
-          </div>
 
-          {/* Summary */}
-          {activeAmount > 0 && (
-            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
-              <div className="flex justify-between items-center">
-                <span className="text-sand-600 text-sm">Your Donation</span>
-                <span className="text-2xl font-bold text-emerald-700">
+            {/* Amount Selection */}
+            <div>
+              <label className="block text-sm font-medium text-sand-700 mb-2">
+                Select Amount
+              </label>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {DONATION_PRESETS.map((amount) => (
+                  <button
+                    key={amount}
+                    onClick={() => {
+                      setSelectedAmount(amount);
+                      setCustomAmount("");
+                    }}
+                    className={`py-2.5 rounded-xl font-semibold text-sm transition-all cursor-pointer ${
+                      selectedAmount === amount
+                        ? "btn-gradient text-white"
+                        : "bg-sand-100 text-sand-700 hover:bg-sand-200"
+                    }`}
+                  >
+                    ${amount}
+                  </button>
+                ))}
+              </div>
+              <Input
+                placeholder="Custom amount"
+                type="number"
+                value={customAmount}
+                onChange={(e) => {
+                  setCustomAmount(e.target.value);
+                  setSelectedAmount(null);
+                }}
+              />
+            </div>
+
+            {/* Donor Info */}
+            <div className="space-y-2">
+              <Input
+                label="Your Name"
+                placeholder="Full Name"
+                value={donorName}
+                onChange={(e) => setDonorName(e.target.value)}
+                disabled={isAnonymous}
+              />
+              <Input
+                label="Email Address"
+                type="email"
+                placeholder="you@example.com"
+                value={donorEmail}
+                onChange={(e) => setDonorEmail(e.target.value)}
+                required
+              />
+              <label className="flex items-center gap-2 text-xs text-sand-600 cursor-pointer pt-1">
+                <input
+                  type="checkbox"
+                  checked={isAnonymous}
+                  onChange={(e) => setIsAnonymous(e.target.checked)}
+                  className="rounded border-sand-300 text-emerald-600 focus:ring-emerald-500"
+                />
+                Make this donation anonymous
+              </label>
+            </div>
+
+            {/* Summary */}
+            {activeAmount > 0 && (
+              <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100 flex justify-between items-center">
+                <div>
+                  <span className="text-sand-600 text-xs">Total Contribution</span>
+                  <p className="text-xs text-sand-400 capitalize">{selectedCategory} Fund</p>
+                </div>
+                <span className="text-xl font-bold text-emerald-700">
                   {formatCurrency(activeAmount)}
                 </span>
               </div>
-              <p className="text-xs text-sand-500 mt-1">
-                {selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1)} •
-                Tax-deductible receipt will be emailed
-              </p>
-            </div>
-          )}
+            )}
 
-          <Button
-            className="w-full"
-            size="lg"
-            variant="gold"
-            disabled={activeAmount <= 0}
-          >
-            <Heart className="h-5 w-5" />
-            Complete Donation — {formatCurrency(activeAmount)}
-          </Button>
-
-          <p className="text-xs text-sand-400 text-center">
-            🔒 Secured by 256-bit encryption. Your information is safe.
-          </p>
-        </div>
+            <Button
+              className="w-full"
+              size="lg"
+              variant="gold"
+              disabled={activeAmount <= 0 || status === "submitting"}
+              onClick={handleDonationSubmit}
+            >
+              <Heart className="h-5 w-5" />
+              {status === "submitting" ? "Processing..." : `Complete Donation — ${formatCurrency(activeAmount)}`}
+            </Button>
+          </div>
+        )}
       </Modal>
     </section>
   );

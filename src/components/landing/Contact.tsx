@@ -18,6 +18,7 @@ import {
   Input,
   Textarea,
 } from "@/components/ui";
+import { submitContactMessage } from "@/lib/supabase/api";
 
 const CONTACT_INFO = [
   {
@@ -62,13 +63,26 @@ const FAQS = [
 ];
 
 export default function Contact() {
-  const [formStatus, setFormStatus] = useState<"idle" | "success">("idle");
+  const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "success">("idle");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [formData, setFormData] = useState({ name: "", email: "", subject: "", message: "" });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormStatus("submitting");
+
+    await submitContactMessage({
+      name: formData.name,
+      email: formData.email,
+      subject: formData.subject,
+      message: formData.message,
+    });
+
     setFormStatus("success");
-    setTimeout(() => setFormStatus("idle"), 3000);
+    setTimeout(() => {
+      setFormStatus("idle");
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    }, 3000);
   };
 
   return (
@@ -102,6 +116,8 @@ export default function Contact() {
                     label="Your Name"
                     id="contact-name"
                     placeholder="Full name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
                   />
                   <Input
@@ -109,6 +125,8 @@ export default function Contact() {
                     id="contact-email"
                     type="email"
                     placeholder="you@example.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     required
                   />
                 </div>
@@ -116,12 +134,16 @@ export default function Contact() {
                   label="Subject"
                   id="contact-subject"
                   placeholder="How can we help?"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                 />
                 <Textarea
                   label="Message"
                   id="contact-message"
                   placeholder="Write your message..."
                   rows={5}
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                   required
                 />
 
@@ -132,9 +154,9 @@ export default function Contact() {
                     </p>
                   </div>
                 ) : (
-                  <Button type="submit" size="lg" className="w-full">
+                  <Button type="submit" size="lg" className="w-full" disabled={formStatus === "submitting"}>
                     <Send className="h-5 w-5" />
-                    Send Message
+                    {formStatus === "submitting" ? "Sending..." : "Send Message"}
                   </Button>
                 )}
               </form>

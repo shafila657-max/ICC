@@ -1,13 +1,40 @@
 "use client";
 
 import React, { useState } from "react";
-import { Calendar, Clock, MapPin, Users, ArrowRight, ChevronRight } from "lucide-react";
-import { Container, SectionHeading, Card, Badge, Button, Modal } from "@/components/ui";
+import { Calendar, Clock, MapPin, Users, ArrowRight, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Container, SectionHeading, Card, Badge, Button, Modal, Input } from "@/components/ui";
 import { EVENTS } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
+import { submitEventRSVP } from "@/lib/supabase/api";
 
-export default function Events() {
+interface EventsProps {
+  eventsList?: typeof EVENTS;
+}
+
+export default function Events({ eventsList = EVENTS }: EventsProps) {
   const [selectedEvent, setSelectedEvent] = useState<(typeof EVENTS)[0] | null>(null);
+  const [rsvpModalEvent, setRsvpModalEvent] = useState<(typeof EVENTS)[0] | null>(null);
+  const [rsvpStatus, setRsvpStatus] = useState<"idle" | "submitting" | "success">("idle");
+  const [formData, setFormData] = useState({ name: "", email: "" });
+
+  const handleRsvpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rsvpModalEvent) return;
+    setRsvpStatus("submitting");
+
+    await submitEventRSVP({
+      event_id: rsvpModalEvent.id,
+      name: formData.name,
+      email: formData.email,
+    });
+
+    setRsvpStatus("success");
+    setTimeout(() => {
+      setRsvpModalEvent(null);
+      setRsvpStatus("idle");
+      setFormData({ name: "", email: "" });
+    }, 2000);
+  };
 
   return (
     <section id="events" className="section-padding bg-sand-50 relative">
@@ -20,7 +47,7 @@ export default function Events() {
         />
 
         <div className="grid md:grid-cols-2 gap-6">
-          {EVENTS.map((event, i) => (
+          {eventsList.map((event) => (
             <Card key={event.id} hover className="group relative overflow-hidden">
               {event.is_featured && (
                 <div className="absolute top-4 right-4">
@@ -75,7 +102,7 @@ export default function Events() {
                   View Details
                   <ChevronRight className="h-4 w-4" />
                 </button>
-                <Button size="sm" variant="primary">
+                <Button size="sm" variant="primary" onClick={() => setRsvpModalEvent(event)}>
                   RSVP
                 </Button>
               </div>
@@ -115,10 +142,58 @@ export default function Events() {
                 <span className="text-sand-700">{selectedEvent.location}</span>
               </div>
             </div>
-            <Button className="w-full" size="lg">
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={() => {
+                const ev = selectedEvent;
+                setSelectedEvent(null);
+                setRsvpModalEvent(ev);
+              }}
+            >
               Register for This Event
             </Button>
           </div>
+        )}
+      </Modal>
+
+      {/* RSVP Registration Modal */}
+      <Modal
+        isOpen={!!rsvpModalEvent}
+        onClose={() => setRsvpModalEvent(null)}
+        title={`RSVP — ${rsvpModalEvent?.title}`}
+      >
+        {rsvpStatus === "success" ? (
+          <div className="p-6 text-center space-y-3">
+            <CheckCircle2 className="h-12 w-12 text-emerald-600 mx-auto" />
+            <h4 className="text-xl font-bold text-sand-900">RSVP Confirmed!</h4>
+            <p className="text-sm text-sand-500">
+              We look forward to seeing you at {rsvpModalEvent?.location}.
+            </p>
+          </div>
+        ) : (
+          <form onSubmit={handleRsvpSubmit} className="space-y-4">
+            <Input
+              label="Full Name"
+              id="rsvp-name"
+              placeholder="Your name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+            />
+            <Input
+              label="Email Address"
+              id="rsvp-email"
+              type="email"
+              placeholder="you@example.com"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              required
+            />
+            <Button type="submit" size="lg" className="w-full" disabled={rsvpStatus === "submitting"}>
+              {rsvpStatus === "submitting" ? "Submitting..." : "Confirm RSVP"}
+            </Button>
+          </form>
         )}
       </Modal>
     </section>

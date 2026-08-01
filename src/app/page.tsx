@@ -8,8 +8,20 @@ import Donations from "@/components/landing/Donations";
 import Gallery from "@/components/landing/Gallery";
 import Testimonials from "@/components/landing/Testimonials";
 import Contact from "@/components/landing/Contact";
+import {
+  fetchPrograms,
+  fetchEvents,
+  fetchTestimonials,
+  fetchGalleryItems,
+} from "@/lib/supabase/api";
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Asynchronously query live Supabase database tables (with fallback defaults)
+  const programsData = await fetchPrograms();
+  const eventsData = await fetchEvents();
+  const testimonialsData = await fetchTestimonials();
+  const galleryData = await fetchGalleryItems();
+
   return (
     <>
       <Navbar />
@@ -17,7 +29,7 @@ export default function HomePage() {
         <Hero />
         <About />
         <Programs />
-        <Events />
+        <Events eventsList={eventsData} />
         <Donations />
         <Gallery />
         <Testimonials />

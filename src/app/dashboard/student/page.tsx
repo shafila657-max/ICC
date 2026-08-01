@@ -1,28 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   BookOpen,
   Bell,
   Clock,
   Download,
   Play,
-  FileText,
   Calendar,
   Award,
   TrendingUp,
-  ArrowUpRight,
-  CheckCircle2,
 } from "lucide-react";
-import {
-  Card,
-  Badge,
-  Button,
-  ProgressBar,
-  Avatar,
-} from "@/components/ui";
+import { Card, Badge, Button, ProgressBar } from "@/components/ui";
 import { COURSES, ANNOUNCEMENTS } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
+import { fetchAnnouncements, fetchCourses } from "@/lib/supabase/api";
+import type { Announcement, Course } from "@/lib/types";
 
 const STUDENT_STATS = [
   { label: "Enrolled Courses", value: "4", icon: BookOpen, color: "from-emerald-500 to-emerald-600" },
@@ -39,9 +32,19 @@ const SCHEDULE = [
 ];
 
 export default function StudentDashboard() {
-  const studentAnnouncements = ANNOUNCEMENTS.filter(
-    (a) => a.target_role === "all" || a.target_role === "student"
-  );
+  const [coursesList, setCoursesList] = useState<Course[]>(COURSES as Course[]);
+  const [announcementsList, setAnnouncementsList] = useState<Announcement[]>(ANNOUNCEMENTS as Announcement[]);
+
+  useEffect(() => {
+    async function loadStudentData() {
+      const dbCourses = await fetchCourses();
+      if (dbCourses.length > 0) setCoursesList(dbCourses);
+
+      const dbAnn = await fetchAnnouncements("student");
+      if (dbAnn.length > 0) setAnnouncementsList(dbAnn);
+    }
+    loadStudentData();
+  }, []);
 
   return (
     <div className="space-y-8">
@@ -68,11 +71,11 @@ export default function StudentDashboard() {
           <Card id="courses">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-bold text-sand-900">My Courses</h3>
-              <Badge variant="success">{COURSES.length} Enrolled</Badge>
+              <Badge variant="success">{coursesList.length} Enrolled</Badge>
             </div>
 
             <div className="space-y-4">
-              {COURSES.map((course) => (
+              {coursesList.map((course) => (
                 <div
                   key={course.id}
                   className="p-4 rounded-xl border border-sand-100 hover:border-emerald-200 hover:shadow-sm transition-all group"
@@ -86,8 +89,8 @@ export default function StudentDashboard() {
                         <h4 className="font-semibold text-sand-900 group-hover:text-emerald-700 transition-colors">
                           {course.title}
                         </h4>
-                        <Badge variant={course.progress! >= 70 ? "success" : "default"}>
-                          {course.progress}%
+                        <Badge variant={(course.progress || 0) >= 70 ? "success" : "default"}>
+                          {course.progress || 0}%
                         </Badge>
                       </div>
                       <p className="text-sm text-sand-500 mb-2">{course.description}</p>
@@ -144,7 +147,7 @@ export default function StudentDashboard() {
               Announcements
             </h3>
             <div className="space-y-3">
-              {studentAnnouncements.map((ann) => (
+              {announcementsList.map((ann) => (
                 <div
                   key={ann.id}
                   className={`p-3 rounded-xl border-l-4 ${

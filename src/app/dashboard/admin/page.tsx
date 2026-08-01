@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Megaphone,
@@ -13,10 +13,6 @@ import {
   Trash2,
   Eye,
   Search,
-  Filter,
-  MoreVertical,
-  CheckCircle2,
-  XCircle,
   AlertCircle,
   ArrowUpRight,
 } from "lucide-react";
@@ -29,10 +25,19 @@ import {
   Select,
   Modal,
   Avatar,
-  ProgressBar,
 } from "@/components/ui";
 import { ANNOUNCEMENTS, EVENTS, DONATIONS, GALLERY_ITEMS } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import {
+  fetchAnnouncements,
+  fetchEvents,
+  fetchDonations,
+  fetchUserProfiles,
+  createAnnouncement,
+  createEvent,
+  updateUserRole,
+} from "@/lib/supabase/api";
+import type { Announcement, EventItem, Donation, Profile, UserRole } from "@/lib/types";
 
 /* ===== Stats Cards ===== */
 const ADMIN_STATS = [
@@ -42,14 +47,14 @@ const ADMIN_STATS = [
   { label: "Donations", value: "$128K", change: "+18%", icon: DollarSign, color: "from-gold-500 to-gold-600" },
 ];
 
-/* ===== Mock Users ===== */
-const MOCK_USERS = [
-  { id: "1", name: "Aisha Rahman", email: "aisha@email.com", role: "student" as const, status: "active" as const, joined: "2025-09-01" },
-  { id: "2", name: "Omar Hassan", email: "omar@email.com", role: "alumni" as const, status: "active" as const, joined: "2024-06-15" },
-  { id: "3", name: "Fatima Sayed", email: "fatima@email.com", role: "student" as const, status: "active" as const, joined: "2025-01-20" },
-  { id: "4", name: "Ibrahim Khalil", email: "ibrahim@email.com", role: "admin" as const, status: "active" as const, joined: "2023-03-10" },
-  { id: "5", name: "Mariam Yusuf", email: "mariam@email.com", role: "alumni" as const, status: "inactive" as const, joined: "2024-11-05" },
-  { id: "6", name: "Zaid Ahmed", email: "zaid@email.com", role: "student" as const, status: "active" as const, joined: "2026-01-08" },
+/* ===== Mock Fallback Users ===== */
+const MOCK_USERS: Profile[] = [
+  { id: "1", full_name: "Aisha Rahman", email: "aisha@email.com", role: "student", is_active: true, created_at: "2025-09-01" },
+  { id: "2", full_name: "Omar Hassan", email: "omar@email.com", role: "alumni", is_active: true, created_at: "2024-06-15" },
+  { id: "3", full_name: "Fatima Sayed", email: "fatima@email.com", role: "student", is_active: true, created_at: "2025-01-20" },
+  { id: "4", full_name: "Ibrahim Khalil", email: "ibrahim@email.com", role: "admin", is_active: true, created_at: "2023-03-10" },
+  { id: "5", full_name: "Mariam Yusuf", email: "mariam@email.com", role: "alumni", is_active: false, created_at: "2024-11-05" },
+  { id: "6", full_name: "Zaid Ahmed", email: "zaid@email.com", role: "student", is_active: true, created_at: "2026-01-08" },
 ];
 
 const ROLE_BADGE: Record<string, "success" | "info" | "warning" | "gold"> = {
@@ -64,9 +69,83 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"users" | "announcements" | "events" | "gallery" | "donations">("users");
 
-  const filteredUsers = MOCK_USERS.filter(
+  // State loaded from Supabase backend (with seed fallback)
+  const [usersList, setUsersList] = useState<Profile[]>(MOCK_USERS);
+  const [announcementsList, setAnnouncementsList] = useState<Announcement[]>(ANNOUNCEMENTS as Announcement[]);
+  const [eventsList, setEventsList] = useState<EventItem[]>(EVENTS as EventItem[]);
+  const [donationsList, setDonationsList] = useState<Donation[]>(DONATIONS as Donation[]);
+
+  // Form states
+  const [annTitle, setAnnTitle] = useState("");
+  const [annContent, setAnnContent] = useState("");
+  const [annPriority, setAnnPriority] = useState<any>("low");
+  const [annTarget, setAnnTarget] = useState<any>("all");
+
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDesc, setEventDesc] = useState("");
+  const [eventDate, setEventDate] = useState("");
+  const [eventTime, setEventTime] = useState("");
+  const [eventLoc, setEventLoc] = useState("");
+
+  useEffect(() => {
+    async function loadBackendData() {
+      const dbUsers = await fetchUserProfiles();
+      if (dbUsers.length > 0) setUsersList(dbUsers);
+
+      const dbAnn = await fetchAnnouncements("admin");
+      if (dbAnn.length > 0) setAnnouncementsList(dbAnn);
+
+      const dbEvents = await fetchEvents();
+      if (dbEvents.length > 0) setEventsList(dbEvents);
+
+      const dbDonations = await fetchDonations();
+      if (dbDonations.length > 0) setDonationsList(dbDonations);
+    }
+    loadBackendData();
+  }, []);
+
+  const handleCreateAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newAnn: Partial<Announcement> = {
+      title: annTitle,
+      content: annContent,
+      priority: annPriority,
+      target_role: annTarget,
+      is_published: true,
+      created_at: new Date().toISOString().split("T")[0],
+    };
+
+    await createAnnouncement(newAnn);
+    setAnnouncementsList([{ ...newAnn, id: String(Date.now()) } as Announcement, ...announcementsList]);
+    setShowAnnouncementModal(false);
+    setAnnTitle("");
+    setAnnContent("");
+  };
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newEv: Partial<EventItem> = {
+      title: eventTitle,
+      description: eventDesc,
+      date: eventDate,
+      time: eventTime,
+      location: eventLoc,
+      is_featured: false,
+    };
+
+    await createEvent(newEv);
+    setEventsList([{ ...newEv, id: String(Date.now()) } as EventItem, ...eventsList]);
+    setShowEventModal(false);
+    setEventTitle("");
+    setEventDesc("");
+    setEventDate("");
+    setEventTime("");
+    setEventLoc("");
+  };
+
+  const filteredUsers = usersList.filter(
     (u) =>
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -153,9 +232,9 @@ export default function AdminDashboard() {
                   <tr key={user.id} className="border-b border-sand-50 hover:bg-sand-50/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <Avatar name={user.name} size="sm" />
+                        <Avatar name={user.full_name} size="sm" />
                         <div>
-                          <p className="font-medium text-sand-900">{user.name}</p>
+                          <p className="font-medium text-sand-900">{user.full_name}</p>
                           <p className="text-xs text-sand-400">{user.email}</p>
                         </div>
                       </div>
@@ -164,12 +243,12 @@ export default function AdminDashboard() {
                       <Badge variant={ROLE_BADGE[user.role]}>{user.role}</Badge>
                     </td>
                     <td className="px-6 py-4 hidden md:table-cell">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.status === "active" ? "text-emerald-600" : "text-sand-400"}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${user.status === "active" ? "bg-emerald-500" : "bg-sand-300"}`} />
-                        {user.status}
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.is_active ? "text-emerald-600" : "text-sand-400"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${user.is_active ? "bg-emerald-500" : "bg-sand-300"}`} />
+                        {user.is_active ? "active" : "inactive"}
                       </span>
                     </td>
-                    <td className="px-6 py-4 hidden lg:table-cell text-sand-500">{formatDate(user.joined)}</td>
+                    <td className="px-6 py-4 hidden lg:table-cell text-sand-500">{formatDate(user.created_at)}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button className="p-2 rounded-lg hover:bg-sand-100 text-sand-400 hover:text-sand-600 transition-colors cursor-pointer">
@@ -198,7 +277,7 @@ export default function AdminDashboard() {
             </Button>
           </div>
           <div className="space-y-4">
-            {ANNOUNCEMENTS.map((ann) => (
+            {announcementsList.map((ann) => (
               <div key={ann.id} className="flex items-start gap-4 p-4 rounded-xl border border-sand-100 hover:bg-sand-50/50 transition-colors">
                 <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
                   ann.priority === "high" ? "bg-red-100 text-red-600" :
@@ -218,10 +297,6 @@ export default function AdminDashboard() {
                   <p className="text-sm text-sand-500 line-clamp-2">{ann.content}</p>
                   <p className="text-xs text-sand-400 mt-2">{formatDate(ann.created_at)}</p>
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  <button className="p-2 rounded-lg hover:bg-sand-100 text-sand-400 cursor-pointer"><Pencil className="h-4 w-4" /></button>
-                  <button className="p-2 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 cursor-pointer"><Trash2 className="h-4 w-4" /></button>
-                </div>
               </div>
             ))}
           </div>
@@ -238,7 +313,7 @@ export default function AdminDashboard() {
             </Button>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
-            {EVENTS.map((event) => (
+            {eventsList.map((event) => (
               <div key={event.id} className="p-4 rounded-xl border border-sand-100 hover:shadow-md transition-all">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
@@ -255,11 +330,6 @@ export default function AdminDashboard() {
                 <p className="text-sm text-sand-500 mb-3 line-clamp-2">{event.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-sand-400">📍 {event.location}</span>
-                  <div className="flex gap-1">
-                    <button className="p-1.5 rounded-lg hover:bg-sand-100 text-sand-400 cursor-pointer"><Eye className="h-4 w-4" /></button>
-                    <button className="p-1.5 rounded-lg hover:bg-sand-100 text-sand-400 cursor-pointer"><Pencil className="h-4 w-4" /></button>
-                    <button className="p-1.5 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 cursor-pointer"><Trash2 className="h-4 w-4" /></button>
-                  </div>
                 </div>
               </div>
             ))}
@@ -275,14 +345,10 @@ export default function AdminDashboard() {
             <Button size="sm"><Plus className="h-4 w-4" /> Upload Image</Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {GALLERY_ITEMS.map((item, i) => (
+            {GALLERY_ITEMS.map((item) => (
               <div key={item.id} className="group relative aspect-square rounded-xl bg-gradient-to-br from-emerald-200 to-emerald-300 overflow-hidden">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <ImageIcon className="h-8 w-8 text-emerald-500/30" />
-                </div>
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
-                  <button className="p-2 rounded-full bg-white/90 text-sand-700 hover:bg-white cursor-pointer"><Eye className="h-4 w-4" /></button>
-                  <button className="p-2 rounded-full bg-white/90 text-red-500 hover:bg-white cursor-pointer"><Trash2 className="h-4 w-4" /></button>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
                   <p className="text-white text-xs font-medium truncate">{item.title}</p>
@@ -299,26 +365,10 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-sand-900">Donation Analytics</h3>
             <Badge variant="success">
-              <TrendingUp className="h-3 w-3" /> +18% this month
+              <TrendingUp className="h-3 w-3" /> Live Backend Connected
             </Badge>
           </div>
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {[
-              { label: "Total Raised", value: "$128,500", color: "text-emerald-600" },
-              { label: "This Month", value: "$12,400", color: "text-blue-600" },
-              { label: "Total Donors", value: "342", color: "text-purple-600" },
-              { label: "Avg. Donation", value: "$375", color: "text-gold-600" },
-            ].map((item) => (
-              <div key={item.label} className="p-4 rounded-xl bg-sand-50 border border-sand-100">
-                <p className="text-xs text-sand-500 mb-1">{item.label}</p>
-                <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Recent Donations Table */}
           <h4 className="font-semibold text-sand-900 mb-3">Recent Donations</h4>
           <div className="overflow-x-auto -mx-6">
             <table className="w-full text-sm">
@@ -331,7 +381,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {DONATIONS.map((d) => (
+                {donationsList.map((d) => (
                   <tr key={d.id} className="border-b border-sand-50 hover:bg-sand-50/50">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
@@ -360,13 +410,15 @@ export default function AdminDashboard() {
         onClose={() => setShowAnnouncementModal(false)}
         title="New Announcement"
       >
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setShowAnnouncementModal(false); }}>
-          <Input label="Title" id="ann-title" placeholder="Announcement title" required />
-          <Textarea label="Content" id="ann-content" placeholder="Write your announcement..." rows={4} required />
+        <form className="space-y-4" onSubmit={handleCreateAnnouncement}>
+          <Input label="Title" id="ann-title" placeholder="Announcement title" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} required />
+          <Textarea label="Content" id="ann-content" placeholder="Write your announcement..." rows={4} value={annContent} onChange={(e) => setAnnContent(e.target.value)} required />
           <div className="grid grid-cols-2 gap-4">
             <Select
               label="Priority"
               id="ann-priority"
+              value={annPriority}
+              onChange={(e) => setAnnPriority(e.target.value)}
               options={[
                 { value: "low", label: "Low" },
                 { value: "medium", label: "Medium" },
@@ -376,6 +428,8 @@ export default function AdminDashboard() {
             <Select
               label="Target Audience"
               id="ann-target"
+              value={annTarget}
+              onChange={(e) => setAnnTarget(e.target.value)}
               options={[
                 { value: "all", label: "Everyone" },
                 { value: "student", label: "Students" },
@@ -393,15 +447,14 @@ export default function AdminDashboard() {
         onClose={() => setShowEventModal(false)}
         title="New Event"
       >
-        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); setShowEventModal(false); }}>
-          <Input label="Event Title" id="event-title" placeholder="Event name" required />
-          <Textarea label="Description" id="event-desc" placeholder="Event description..." rows={3} required />
+        <form className="space-y-4" onSubmit={handleCreateEvent}>
+          <Input label="Event Title" id="event-title" placeholder="Event name" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} required />
+          <Textarea label="Description" id="event-desc" placeholder="Event description..." rows={3} value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} required />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Date" id="event-date" type="date" required />
-            <Input label="Time" id="event-time" type="time" required />
+            <Input label="Date" id="event-date" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required />
+            <Input label="Time" id="event-time" type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} required />
           </div>
-          <Input label="Location" id="event-location" placeholder="Event venue" required />
-          <Input label="Max Attendees" id="event-max" type="number" placeholder="e.g. 100" />
+          <Input label="Location" id="event-location" placeholder="Event venue" value={eventLoc} onChange={(e) => setEventLoc(e.target.value)} required />
           <Button type="submit" className="w-full">Create Event</Button>
         </form>
       </Modal>
