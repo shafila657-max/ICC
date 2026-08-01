@@ -49,13 +49,13 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3 group">
-            <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 shadow-xl shadow-emerald-600/30 flex items-center justify-center">
-              <Star className="h-7 w-7 text-gold-400 fill-gold-400" />
+            <div className="p-2 rounded-2xl bg-white/90 shadow-xl flex items-center justify-center">
+              <img src="/logo.png" alt="ICC Logo" className="h-12 w-auto object-contain" />
             </div>
             <div className="text-left">
               <span className="text-2xl font-bold text-white">ICC</span>
               <p className="text-xs tracking-widest uppercase text-emerald-300 -mt-0.5">
-                Charity Center
+                Islamic Charity Center
               </p>
             </div>
           </Link>

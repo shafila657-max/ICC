@@ -18,6 +18,7 @@ import type {
   Donation,
   UserRole,
   Profile,
+  AlumniUpdate,
 } from "@/lib/types";
 
 /* =============================================
@@ -232,6 +233,43 @@ export async function fetchUserProfiles(): Promise<Profile[]> {
   } catch (err) {
     console.warn("fetchUserProfiles exception:", err);
     return [];
+  }
+}
+
+/** Fetch pending user profiles requiring Admin approval */
+export async function fetchPendingProfiles(): Promise<Profile[]> {
+  if (!isSupabaseConfigured()) return [];
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .or("is_active.eq.false,status.eq.pending")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.warn("fetchPendingProfiles error:", error.message);
+      return [];
+    }
+    return (data as Profile[]) || [];
+  } catch (err) {
+    return [];
+  }
+}
+
+/** Fetch alumni community discussion feed */
+export async function fetchAlumniUpdates(): Promise<AlumniUpdate[]> {
+  const fallbackUpdates: AlumniUpdate[] = [
+    { id: "1", author_id: "1", author_name: "Omar Hassan (Class of 2020)", content: "Excited to share that our alumni mentoring program is kicking off next week! Contact me if you want to mentor young ICC students.", created_at: "2026-03-01" },
+    { id: "2", author_id: "2", author_name: "Fatima Al-Sayed (Class of 2018)", content: "We are organizing the Annual Alumni Gala Dinner on August 15th. Mark your calendars!", created_at: "2026-03-10" },
+  ];
+
+  if (!isSupabaseConfigured()) return fallbackUpdates;
+  try {
+    const { data, error } = await supabase.from("alumni_updates").select("*").order("created_at", { ascending: false });
+    if (error || !data || data.length === 0) return fallbackUpdates;
+    return data as AlumniUpdate[];
+  } catch (err) {
+    return fallbackUpdates;
   }
 }
 
@@ -563,6 +601,63 @@ export async function deleteProgram(id: string): Promise<{ success: boolean; err
   if (!isSupabaseConfigured()) return { success: true };
   try {
     const { error } = await supabase.from("programs").delete().eq("id", id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/* ===== Alumni Updates & Approval Mutations ===== */
+
+export async function createAlumniUpdate(authorName: string, content: string): Promise<{ success: boolean; data?: AlumniUpdate; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return {
+      success: true,
+      data: {
+        id: String(Date.now()),
+        author_id: "local",
+        author_name: authorName,
+        content,
+        created_at: new Date().toISOString().split("T")[0],
+      },
+    };
+  }
+  try {
+    const { data, error } = await supabase
+      .from("alumni_updates")
+      .insert([{ author_name: authorName, content }])
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: data as AlumniUpdate };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function approveUserProfile(userId: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_active: true, status: "approved" })
+      .eq("id", userId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function rejectUserProfile(userId: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ is_active: false, status: "rejected" })
+      .eq("id", userId);
     if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {

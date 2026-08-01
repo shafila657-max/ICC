@@ -32,13 +32,13 @@ export default function Footer() {
           {/* Brand Column */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-6">
-              <div className="flex items-center justify-center h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 shadow-lg">
-                <Star className="h-5 w-5 text-gold-400 fill-gold-400" />
+              <div className="flex items-center justify-center p-1.5 rounded-xl bg-white/90 shadow-lg">
+                <img src="/logo.png" alt="ICC Logo" className="h-10 w-auto object-contain" />
               </div>
               <div>
-                <span className="text-xl font-bold">ICC</span>
+                <span className="text-xl font-bold text-white">ICC</span>
                 <p className="text-[10px] tracking-widest uppercase text-emerald-300 -mt-0.5">
-                  Charity Center
+                  Islamic Charity Center
                 </p>
               </div>
             </div>

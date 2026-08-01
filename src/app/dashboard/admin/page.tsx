@@ -23,6 +23,8 @@ import {
   Upload,
   GraduationCap,
   ExternalLink,
+  UserCheck,
+  XCircle,
 } from "lucide-react";
 import {
   Card,
@@ -43,6 +45,9 @@ import {
   fetchUserProfiles,
   fetchGalleryItems,
   fetchPrograms,
+  fetchPendingProfiles,
+  approveUserProfile,
+  rejectUserProfile,
   createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
@@ -68,7 +73,7 @@ const MOCK_USERS: Profile[] = [
   { id: "2", full_name: "Omar Hassan", email: "omar@email.com", role: "alumni", is_active: true, created_at: "2024-06-15" },
   { id: "3", full_name: "Fatima Sayed", email: "fatima@email.com", role: "student", is_active: true, created_at: "2025-01-20" },
   { id: "4", full_name: "Ibrahim Khalil", email: "ibrahim@email.com", role: "admin", is_active: true, created_at: "2023-03-10" },
-  { id: "5", full_name: "Mariam Yusuf", email: "mariam@email.com", role: "alumni", is_active: false, created_at: "2024-11-05" },
+  { id: "5", full_name: "Mariam Yusuf", email: "mariam@email.com", role: "alumni", is_active: false, status: "pending", created_at: "2024-11-05" },
   { id: "6", full_name: "Zaid Ahmed", email: "zaid@email.com", role: "student", is_active: true, created_at: "2026-01-08" },
 ];
 
@@ -82,12 +87,12 @@ function AdminDashboardContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
 
-  const [activeTab, setActiveTab] = useState<"overview" | "programs" | "users" | "announcements" | "events" | "gallery" | "donations">(
+  const [activeTab, setActiveTab] = useState<"overview" | "onboarding" | "programs" | "users" | "announcements" | "events" | "gallery" | "donations">(
     (tabParam as any) || "overview"
   );
 
   useEffect(() => {
-    if (tabParam && ["overview", "programs", "users", "announcements", "events", "gallery", "donations"].includes(tabParam)) {
+    if (tabParam && ["overview", "onboarding", "programs", "users", "announcements", "events", "gallery", "donations"].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [tabParam]);
@@ -111,6 +116,7 @@ function AdminDashboardContent() {
 
   // Live Backend Data States
   const [usersList, setUsersList] = useState<Profile[]>(MOCK_USERS);
+  const [pendingUsersList, setPendingUsersList] = useState<Profile[]>([]);
   const [announcementsList, setAnnouncementsList] = useState<Announcement[]>(ANNOUNCEMENTS as Announcement[]);
   const [eventsList, setEventsList] = useState<EventItem[]>(EVENTS as EventItem[]);
   const [galleryList, setGalleryList] = useState<GalleryItem[]>(GALLERY_ITEMS as GalleryItem[]);
@@ -153,7 +159,12 @@ function AdminDashboardContent() {
 
   const refreshAllData = async () => {
     const dbUsers = await fetchUserProfiles();
-    if (dbUsers.length > 0) setUsersList(dbUsers);
+    if (dbUsers.length > 0) {
+      setUsersList(dbUsers);
+      setPendingUsersList(dbUsers.filter((u) => u.is_active === false || u.status === "pending"));
+    } else {
+      setPendingUsersList(MOCK_USERS.filter((u) => u.is_active === false || u.status === "pending"));
+    }
 
     const dbAnn = await fetchAnnouncements("admin");
     if (dbAnn.length > 0) setAnnouncementsList(dbAnn);
@@ -178,6 +189,27 @@ function AdminDashboardContent() {
   const triggerFeedback = (type: "success" | "error", message: string) => {
     setActionFeedback({ type, message });
     setTimeout(() => setActionFeedback(null), 4000);
+  };
+
+  /* ===== Onboarding Approval Handlers ===== */
+  const handleApproveAccount = async (id: string, name: string) => {
+    const res = await approveUserProfile(id);
+    if (res.success) {
+      triggerFeedback("success", `Account for "${name}" has been APPROVED! User can now access dashboard.`);
+      refreshAllData();
+    } else {
+      triggerFeedback("error", res.error || "Failed to approve user");
+    }
+  };
+
+  const handleRejectAccount = async (id: string, name: string) => {
+    const res = await rejectUserProfile(id);
+    if (res.success) {
+      triggerFeedback("error", `Registration for "${name}" was REJECTED.`);
+      refreshAllData();
+    } else {
+      triggerFeedback("error", res.error || "Failed to reject user");
+    }
   };
 
   /* ===== Program Builder Handlers ===== */
@@ -534,8 +566,8 @@ function AdminDashboardContent() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Total Users", value: String(usersList.length), change: "Live Sync", icon: Users, color: "from-emerald-500 to-emerald-600" },
+          { label: "Pending Approvals", value: String(pendingUsersList.length), change: "Review Required", icon: UserCheck, color: "from-amber-500 to-amber-600" },
           { label: "Active Programs", value: String(programsList.length), change: "Program Builder", icon: GraduationCap, color: "from-teal-500 to-teal-600" },
-          { label: "Events", value: String(eventsList.length), change: "Upcoming", icon: Calendar, color: "from-purple-500 to-purple-600" },
           { label: "Donations", value: formatCurrency(totalDonations), change: `${donationsList.length} Raised`, icon: DollarSign, color: "from-gold-500 to-gold-600" },
         ].map((stat) => (
           <Card key={stat.label} className="relative overflow-hidden group">
@@ -560,6 +592,7 @@ function AdminDashboardContent() {
       <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 border-b border-sand-200">
         {[
           { key: "overview", label: "Overview", icon: Home },
+          { key: "onboarding", label: `Onboarding Approvals (${pendingUsersList.length})`, icon: UserCheck },
           { key: "programs", label: `Programs Builder (${programsList.length})`, icon: GraduationCap },
           { key: "users", label: `Users (${usersList.length})`, icon: Users },
           { key: "announcements", label: `Announcements (${announcementsList.length})`, icon: Megaphone },
@@ -589,11 +622,11 @@ function AdminDashboardContent() {
             <span className="text-xs font-bold uppercase tracking-wider text-sand-400 mr-2">
               Quick Admin Actions:
             </span>
-            <Button size="sm" onClick={() => setShowProgramModal(true)}>
-              <Plus className="h-4 w-4" /> Create New Program
+            <Button size="sm" onClick={() => setActiveTab("onboarding")}>
+              <UserCheck className="h-4 w-4" /> Review Pending Alumni ({pendingUsersList.length})
             </Button>
-            <Button size="sm" variant="gold" onClick={() => setShowAnnouncementModal(true)}>
-              <Plus className="h-4 w-4" /> New Announcement
+            <Button size="sm" variant="gold" onClick={() => setShowProgramModal(true)}>
+              <Plus className="h-4 w-4" /> Create New Program
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setShowEventModal(true)}>
               <Plus className="h-4 w-4" /> New Event
@@ -604,6 +637,40 @@ function AdminDashboardContent() {
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sand-900 text-base">Pending Account Approvals</h3>
+                <button onClick={() => setActiveTab("onboarding")} className="text-xs font-bold text-emerald-600 hover:underline">
+                  Review All ({pendingUsersList.length}) →
+                </button>
+              </div>
+              <div className="space-y-3">
+                {pendingUsersList.length === 0 ? (
+                  <p className="text-xs text-sand-400 italic py-4 text-center">No pending user onboarding requests.</p>
+                ) : (
+                  pendingUsersList.slice(0, 3).map((u) => (
+                    <div key={u.id} className="p-3 rounded-xl bg-amber-50/50 border border-amber-200 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={u.full_name} size="sm" />
+                        <div>
+                          <p className="font-bold text-sm text-sand-900">{u.full_name}</p>
+                          <p className="text-xs text-sand-500">{u.email} • <span className="font-semibold text-amber-700">{u.role}</span></p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleApproveAccount(u.id, u.full_name)}
+                          className="px-2.5 py-1 text-xs font-bold bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                        >
+                          Approve
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </Card>
+
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-sand-900 text-base">Active Programs Builder</h3>
@@ -625,33 +692,85 @@ function AdminDashboardContent() {
                 ))}
               </div>
             </Card>
-
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-sand-900 text-base">Upcoming Events</h3>
-                <button onClick={() => setActiveTab("events")} className="text-xs font-bold text-emerald-600 hover:underline">
-                  View All →
-                </button>
-              </div>
-              <div className="space-y-3">
-                {eventsList.slice(0, 3).map((event) => (
-                  <div key={event.id} className="p-3 rounded-xl bg-sand-50 border border-sand-100 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
-                        <Calendar className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm text-sand-900">{event.title}</p>
-                        <p className="text-xs text-sand-400">{event.date} • {event.time}</p>
-                      </div>
-                    </div>
-                    <Badge variant="gold">{event.location}</Badge>
-                  </div>
-                ))}
-              </div>
-            </Card>
           </div>
         </div>
+      )}
+
+      {/* Onboarding Approvals Tab */}
+      {activeTab === "onboarding" && (
+        <Card id="onboarding">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-sand-900">Alumni & Registration Onboarding Approvals</h3>
+              <p className="text-xs text-sand-500">Review pending alumni account registrations and grant active portal access</p>
+            </div>
+            <Badge variant="warning">
+              {pendingUsersList.length} Requests Pending Review
+            </Badge>
+          </div>
+
+          <div className="overflow-x-auto -mx-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-sand-100 bg-sand-50">
+                  <th className="text-left px-6 py-3 text-sand-500 font-medium">User Profile</th>
+                  <th className="text-left px-6 py-3 text-sand-500 font-medium">Requested Role</th>
+                  <th className="text-left px-6 py-3 text-sand-500 font-medium">Status</th>
+                  <th className="text-left px-6 py-3 text-sand-500 font-medium hidden md:table-cell">Registered Date</th>
+                  <th className="text-right px-6 py-3 text-sand-500 font-medium">Admin Decision</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingUsersList.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-8 text-center text-sand-400 italic">
+                      ✨ Great job! All user registrations have been reviewed and approved.
+                    </td>
+                  </tr>
+                ) : (
+                  pendingUsersList.map((user) => (
+                    <tr key={user.id} className="border-b border-sand-100 hover:bg-sand-50/50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={user.full_name} size="sm" />
+                          <div>
+                            <p className="font-bold text-sand-900">{user.full_name}</p>
+                            <p className="text-xs text-sand-400">{user.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant={ROLE_BADGE[user.role]}>{user.role}</Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="warning" className="animate-pulse">
+                          Pending Approval ⏳
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 hidden md:table-cell text-sand-500">{formatDate(user.created_at)}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleApproveAccount(user.id, user.full_name)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm cursor-pointer"
+                          >
+                            <CheckCircle2 className="h-4 w-4" /> Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectAccount(user.id, user.full_name)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-100 hover:bg-red-200 text-red-700 text-xs font-bold cursor-pointer"
+                          >
+                            <XCircle className="h-4 w-4" /> Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       {/* Program Builder Tab */}
@@ -767,9 +886,9 @@ function AdminDashboardContent() {
                       </button>
                     </td>
                     <td className="px-6 py-4 hidden md:table-cell">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.is_active !== false ? "text-emerald-600" : "text-sand-400"}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${user.is_active !== false ? "bg-emerald-500" : "bg-sand-300"}`} />
-                        {user.is_active !== false ? "active" : "inactive"}
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.is_active !== false ? "text-emerald-600" : "text-amber-600"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${user.is_active !== false ? "bg-emerald-500" : "bg-amber-500"}`} />
+                        {user.is_active !== false ? "approved" : "pending"}
                       </span>
                     </td>
                     <td className="px-6 py-4 hidden lg:table-cell text-sand-500">{formatDate(user.created_at)}</td>

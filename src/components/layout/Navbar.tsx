@@ -30,9 +30,8 @@ export default function Navbar() {
         <nav className="flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative flex items-center justify-center h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 shadow-lg shadow-emerald-600/30 group-hover:shadow-emerald-600/50 transition-shadow">
-              <Star className="h-5 w-5 text-gold-400 fill-gold-400" />
-              <Moon className="h-3 w-3 text-white absolute top-1 right-1" />
+            <div className="relative flex items-center justify-center p-1 rounded-xl bg-white/90 shadow-md group-hover:scale-105 transition-transform">
+              <img src="/logo.png" alt="ICC Logo" className="h-10 w-auto object-contain" />
             </div>
             <div className="flex flex-col">
               <span
@@ -49,7 +48,7 @@ export default function Navbar() {
                   isScrolled ? "text-sand-500" : "text-emerald-200"
                 )}
               >
-                Charity Center
+                Islamic Charity Center
               </span>
             </div>
           </Link>

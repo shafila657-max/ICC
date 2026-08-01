@@ -10,6 +10,9 @@ export interface Profile {
   bio?: string;
   graduation_year?: number;
   batch?: string;
+  company?: string;
+  job_title?: string;
+  status?: "pending" | "approved" | "rejected";
   is_active?: boolean;
   created_at: string;
   updated_at?: string;

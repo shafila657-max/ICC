@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Settings,
   GraduationCap,
+  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, Badge } from "@/components/ui";
@@ -33,6 +34,7 @@ const ROLE_NAV: Record<
 > = {
   admin: [
     { label: "Overview", href: "/dashboard/admin?tab=overview", icon: Home, tab: "overview" },
+    { label: "Onboarding Approvals", href: "/dashboard/admin?tab=onboarding", icon: UserCheck, tab: "onboarding" },
     { label: "Programs", href: "/dashboard/admin?tab=programs", icon: GraduationCap, tab: "programs" },
     { label: "Users", href: "/dashboard/admin?tab=users", icon: Users, tab: "users" },
     { label: "Announcements", href: "/dashboard/admin?tab=announcements", icon: Megaphone, tab: "announcements" },
@@ -110,8 +112,8 @@ export default function DashboardLayout({
         {/* Sidebar Header */}
         <div className="p-6 border-b border-sand-100">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 flex items-center justify-center shadow-md">
-              <Star className="h-5 w-5 text-gold-400 fill-gold-400" />
+            <div className="p-1 rounded-xl bg-sand-50 border border-sand-200 shadow-sm">
+              <img src="/logo.png" alt="ICC Logo" className="h-9 w-auto object-contain" />
             </div>
             <div>
               <span className="text-lg font-bold text-sand-900">ICC</span>
