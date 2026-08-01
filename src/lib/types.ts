@@ -23,6 +23,11 @@ export interface Program {
   image_url?: string;
   is_active: boolean;
   created_at: string;
+  full_content?: string;
+  features?: string[];
+  schedule?: string;
+  contact_email?: string;
+  cta_text?: string;
 }
 
 export interface Event {

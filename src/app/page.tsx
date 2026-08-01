@@ -31,7 +31,7 @@ export default async function HomePage() {
       <main className="flex-1">
         <Hero />
         <About />
-        <Programs />
+        <Programs programsList={programsData} />
         <Events eventsList={eventsData} />
         <Donations />
         <Gallery itemsList={galleryData} />

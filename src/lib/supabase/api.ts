@@ -86,6 +86,26 @@ export async function fetchPrograms(): Promise<Program[]> {
   }
 }
 
+/** Fetch single program by ID */
+export async function fetchProgramById(id: string): Promise<Program | null> {
+  if (!isSupabaseConfigured()) {
+    return PROGRAMS.find((p) => p.id === id) || null;
+  }
+  try {
+    const { data, error } = await supabase
+      .from("programs")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (error || !data) {
+      return PROGRAMS.find((p) => p.id === id) || null;
+    }
+    return data as Program;
+  } catch (err) {
+    return PROGRAMS.find((p) => p.id === id) || null;
+  }
+}
+
 /** Fetch upcoming events */
 export async function fetchEvents(): Promise<EventItem[]> {
   if (!isSupabaseConfigured()) return EVENTS;
@@ -476,6 +496,73 @@ export async function deleteUserProfile(userId: string): Promise<{ success: bool
   if (!isSupabaseConfigured()) return { success: true };
   try {
     const { error } = await supabase.from("profiles").delete().eq("id", userId);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+/* ===== Program Mutations ===== */
+
+export async function createProgram(program: {
+  title: string;
+  description: string;
+  category: "education" | "relief" | "youth" | "quran";
+  image_url?: string;
+  full_content?: string;
+  features?: string[];
+  schedule?: string;
+  contact_email?: string;
+  cta_text?: string;
+}): Promise<{ success: boolean; data?: Program; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { data, error } = await supabase
+      .from("programs")
+      .insert([{
+        title: program.title,
+        description: program.description,
+        category: program.category,
+        image_url: program.image_url,
+        full_content: program.full_content || "",
+        features: program.features || [],
+        schedule: program.schedule || "Flexible Schedule",
+        contact_email: program.contact_email || "info@icc.org",
+        cta_text: program.cta_text || "Register / Get In Touch",
+        is_active: true,
+      }])
+      .select()
+      .single();
+
+    if (error) return { success: false, error: error.message };
+    return { success: true, data: data as Program };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateProgram(
+  id: string,
+  program: Partial<Program>
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase
+      .from("programs")
+      .update(program)
+      .eq("id", id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deleteProgram(id: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase.from("programs").delete().eq("id", id);
     if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {

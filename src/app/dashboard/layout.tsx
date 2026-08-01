@@ -21,6 +21,7 @@ import {
   X,
   ChevronRight,
   Settings,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, Badge } from "@/components/ui";
@@ -32,6 +33,7 @@ const ROLE_NAV: Record<
 > = {
   admin: [
     { label: "Overview", href: "/dashboard/admin?tab=overview", icon: Home, tab: "overview" },
+    { label: "Programs", href: "/dashboard/admin?tab=programs", icon: GraduationCap, tab: "programs" },
     { label: "Users", href: "/dashboard/admin?tab=users", icon: Users, tab: "users" },
     { label: "Announcements", href: "/dashboard/admin?tab=announcements", icon: Megaphone, tab: "announcements" },
     { label: "Events", href: "/dashboard/admin?tab=events", icon: Calendar, tab: "events" },

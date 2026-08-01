@@ -1,9 +1,11 @@
 "use client";
 
 import React from "react";
-import { BookOpen, HeartHandshake, Sparkles, GraduationCap, Users, Shield, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { BookOpen, HeartHandshake, Sparkles, GraduationCap, Users, ArrowRight } from "lucide-react";
 import { Container, SectionHeading, Card, Badge, Button } from "@/components/ui";
 import { PROGRAMS } from "@/lib/constants";
+import type { Program } from "@/lib/types";
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   quran: BookOpen,
@@ -19,22 +21,26 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; badge: "succes
   education: { bg: "from-purple-50 to-purple-100", text: "text-purple-600", badge: "warning" },
 };
 
-export default function Programs() {
+interface ProgramsProps {
+  programsList?: Program[];
+}
+
+export default function Programs({ programsList = PROGRAMS }: ProgramsProps) {
   return (
     <section id="programs" className="section-padding bg-white relative">
       <Container>
         <SectionHeading
           badge="Our Programs"
           title="Programs That Make a Difference"
-          subtitle="From Quranic studies to community relief, our programs serve diverse needs across all ages."
+          subtitle="From Quranic studies to community relief & schools, explore our full program builder offerings."
         />
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {PROGRAMS.map((program, i) => {
+          {programsList.map((program) => {
             const Icon = CATEGORY_ICONS[program.category] || BookOpen;
             const colors = CATEGORY_COLORS[program.category] || CATEGORY_COLORS.education;
             return (
-              <Card key={program.id} hover className="group relative overflow-hidden">
+              <Card key={program.id} hover className="group relative overflow-hidden flex flex-col justify-between">
                 {/* Top accent */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-gold-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
                 
@@ -51,17 +57,20 @@ export default function Programs() {
                     <h3 className="font-bold text-sand-900 text-lg mb-2 group-hover:text-emerald-700 transition-colors">
                       {program.title}
                     </h3>
-                    <p className="text-sm text-sand-500 leading-relaxed">
+                    <p className="text-sm text-sand-500 leading-relaxed line-clamp-3">
                       {program.description}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-sand-100">
-                  <button className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors group/btn cursor-pointer">
-                    Learn More
+                <div className="mt-6 pt-4 border-t border-sand-100 flex items-center justify-between">
+                  <Link
+                    href={`/programs/${program.id}`}
+                    className="inline-flex items-center gap-1.5 text-sm font-bold text-emerald-600 hover:text-emerald-800 transition-colors group/btn cursor-pointer"
+                  >
+                    View Program Details
                     <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
-                  </button>
+                  </Link>
                 </div>
               </Card>
             );
@@ -78,10 +87,12 @@ export default function Programs() {
               <p className="font-semibold text-sand-900">Want to get involved?</p>
               <p className="text-sm text-sand-500">Join as a volunteer or enroll in a program</p>
             </div>
-            <Button variant="primary" size="sm">
-              Join Now
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            <Link href="#contact">
+              <Button variant="primary" size="sm">
+                Join Now
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
           </div>
         </div>
       </Container>

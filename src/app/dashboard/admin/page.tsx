@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   Users,
   Megaphone,
@@ -20,6 +21,8 @@ import {
   CheckCircle2,
   Home,
   Upload,
+  GraduationCap,
+  ExternalLink,
 } from "lucide-react";
 import {
   Card,
@@ -31,7 +34,7 @@ import {
   Modal,
   Avatar,
 } from "@/components/ui";
-import { ANNOUNCEMENTS, EVENTS, DONATIONS, GALLERY_ITEMS } from "@/lib/constants";
+import { ANNOUNCEMENTS, EVENTS, DONATIONS, GALLERY_ITEMS, PROGRAMS } from "@/lib/constants";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
   fetchAnnouncements,
@@ -39,6 +42,7 @@ import {
   fetchDonations,
   fetchUserProfiles,
   fetchGalleryItems,
+  fetchPrograms,
   createAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
@@ -51,9 +55,12 @@ import {
   updateUserProfile,
   updateUserRole,
   deleteUserProfile,
+  createProgram,
+  updateProgram,
+  deleteProgram,
   uploadImageToSupabase,
 } from "@/lib/supabase/api";
-import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole } from "@/lib/types";
+import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole, Program } from "@/lib/types";
 
 /* ===== Mock Fallback Users ===== */
 const MOCK_USERS: Profile[] = [
@@ -75,12 +82,12 @@ function AdminDashboardContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
 
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "announcements" | "events" | "gallery" | "donations">(
+  const [activeTab, setActiveTab] = useState<"overview" | "programs" | "users" | "announcements" | "events" | "gallery" | "donations">(
     (tabParam as any) || "overview"
   );
 
   useEffect(() => {
-    if (tabParam && ["overview", "users", "announcements", "events", "gallery", "donations"].includes(tabParam)) {
+    if (tabParam && ["overview", "programs", "users", "announcements", "events", "gallery", "donations"].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
   }, [tabParam]);
@@ -90,11 +97,13 @@ function AdminDashboardContent() {
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [showProgramModal, setShowProgramModal] = useState(false);
 
   // Edit State & Modals
   const [editingUser, setEditingUser] = useState<Profile | null>(null);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
+  const [editingProgram, setEditingProgram] = useState<Program | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -106,6 +115,7 @@ function AdminDashboardContent() {
   const [eventsList, setEventsList] = useState<EventItem[]>(EVENTS as EventItem[]);
   const [galleryList, setGalleryList] = useState<GalleryItem[]>(GALLERY_ITEMS as GalleryItem[]);
   const [donationsList, setDonationsList] = useState<Donation[]>(DONATIONS as Donation[]);
+  const [programsList, setProgramsList] = useState<Program[]>(PROGRAMS as Program[]);
 
   // User Form
   const [userName, setUserName] = useState("");
@@ -131,6 +141,16 @@ function AdminDashboardContent() {
   const [galleryFile, setGalleryFile] = useState<File | null>(null);
   const [galleryPreviewUrl, setGalleryPreviewUrl] = useState<string>("");
 
+  // Program Builder Form State
+  const [progTitle, setProgTitle] = useState("");
+  const [progDesc, setProgDesc] = useState("");
+  const [progCategory, setProgCategory] = useState<any>("education");
+  const [progFullContent, setProgFullContent] = useState("");
+  const [progSchedule, setProgSchedule] = useState("Mon - Fri, 8:00 AM - 2:00 PM");
+  const [progContactEmail, setProgContactEmail] = useState("admissions@icc.org");
+  const [progCtaText, setProgCtaText] = useState("Register / Get In Touch");
+  const [progFile, setProgFile] = useState<File | null>(null);
+
   const refreshAllData = async () => {
     const dbUsers = await fetchUserProfiles();
     if (dbUsers.length > 0) setUsersList(dbUsers);
@@ -146,6 +166,9 @@ function AdminDashboardContent() {
 
     const dbDonations = await fetchDonations();
     if (dbDonations.length > 0) setDonationsList(dbDonations);
+
+    const dbPrograms = await fetchPrograms();
+    if (dbPrograms.length > 0) setProgramsList(dbPrograms);
   };
 
   useEffect(() => {
@@ -155,6 +178,81 @@ function AdminDashboardContent() {
   const triggerFeedback = (type: "success" | "error", message: string) => {
     setActionFeedback({ type, message });
     setTimeout(() => setActionFeedback(null), 4000);
+  };
+
+  /* ===== Program Builder Handlers ===== */
+  const handleCreateProgram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    let imageUrl = "";
+    if (progFile) {
+      const uploadRes = await uploadImageToSupabase(progFile, "events");
+      if (uploadRes.success && uploadRes.url) {
+        imageUrl = uploadRes.url;
+      }
+    }
+
+    const result = await createProgram({
+      title: progTitle,
+      description: progDesc,
+      category: progCategory,
+      full_content: progFullContent,
+      schedule: progSchedule,
+      contact_email: progContactEmail,
+      cta_text: progCtaText,
+      image_url: imageUrl || undefined,
+    });
+    setIsSubmitting(false);
+
+    if (result.success) {
+      triggerFeedback("success", `Program "${progTitle}" created! Live detail page active.`);
+      refreshAllData();
+      setShowProgramModal(false);
+      setProgTitle("");
+      setProgDesc("");
+      setProgFullContent("");
+      setProgFile(null);
+    } else {
+      triggerFeedback("error", result.error || "Failed to create program");
+    }
+  };
+
+  const handleUpdateProgramSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProgram) return;
+    setIsSubmitting(true);
+
+    const result = await updateProgram(editingProgram.id, {
+      title: editingProgram.title,
+      description: editingProgram.description,
+      category: editingProgram.category,
+      full_content: editingProgram.full_content,
+      schedule: editingProgram.schedule,
+      contact_email: editingProgram.contact_email,
+      cta_text: editingProgram.cta_text,
+    });
+    setIsSubmitting(false);
+
+    if (result.success) {
+      triggerFeedback("success", "Program builder details updated!");
+      setProgramsList(programsList.map((p) => (p.id === editingProgram.id ? editingProgram : p)));
+      setEditingProgram(null);
+      refreshAllData();
+    } else {
+      triggerFeedback("error", result.error || "Failed to update program");
+    }
+  };
+
+  const handleDeleteProgram = async (id: string) => {
+    const result = await deleteProgram(id);
+    if (result.success) {
+      triggerFeedback("success", "Program deleted");
+      setProgramsList(programsList.filter((p) => p.id !== id));
+      refreshAllData();
+    } else {
+      triggerFeedback("error", result.error || "Failed to delete program");
+    }
   };
 
   /* ===== User Handlers ===== */
@@ -344,7 +442,7 @@ function AdminDashboardContent() {
     }
   };
 
-  /* ===== Gallery Handlers (File Upload to Supabase Storage) ===== */
+  /* ===== Gallery Handlers ===== */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -361,8 +459,6 @@ function AdminDashboardContent() {
     }
 
     setIsSubmitting(true);
-
-    // 1. Upload file directly to Supabase Storage bucket
     const uploadRes = await uploadImageToSupabase(galleryFile, "gallery");
     if (!uploadRes.success || !uploadRes.url) {
       setIsSubmitting(false);
@@ -370,7 +466,6 @@ function AdminDashboardContent() {
       return;
     }
 
-    // 2. Insert record into database with public Storage URL
     const result = await createGalleryItem({
       title: galleryTitle,
       category: galleryCategory,
@@ -439,7 +534,7 @@ function AdminDashboardContent() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Total Users", value: String(usersList.length), change: "Live Sync", icon: Users, color: "from-emerald-500 to-emerald-600" },
-          { label: "Announcements", value: String(announcementsList.length), change: "Active", icon: Megaphone, color: "from-blue-500 to-blue-600" },
+          { label: "Active Programs", value: String(programsList.length), change: "Program Builder", icon: GraduationCap, color: "from-teal-500 to-teal-600" },
           { label: "Events", value: String(eventsList.length), change: "Upcoming", icon: Calendar, color: "from-purple-500 to-purple-600" },
           { label: "Donations", value: formatCurrency(totalDonations), change: `${donationsList.length} Raised`, icon: DollarSign, color: "from-gold-500 to-gold-600" },
         ].map((stat) => (
@@ -465,6 +560,7 @@ function AdminDashboardContent() {
       <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 border-b border-sand-200">
         {[
           { key: "overview", label: "Overview", icon: Home },
+          { key: "programs", label: `Programs Builder (${programsList.length})`, icon: GraduationCap },
           { key: "users", label: `Users (${usersList.length})`, icon: Users },
           { key: "announcements", label: `Announcements (${announcementsList.length})`, icon: Megaphone },
           { key: "events", label: `Events (${eventsList.length})`, icon: Calendar },
@@ -489,13 +585,12 @@ function AdminDashboardContent() {
       {/* Overview Tab */}
       {activeTab === "overview" && (
         <div className="space-y-6">
-          {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 p-4 rounded-2xl bg-white border border-sand-200 shadow-sm">
             <span className="text-xs font-bold uppercase tracking-wider text-sand-400 mr-2">
               Quick Admin Actions:
             </span>
-            <Button size="sm" onClick={() => setShowUserModal(true)}>
-              <Plus className="h-4 w-4" /> Add User
+            <Button size="sm" onClick={() => setShowProgramModal(true)}>
+              <Plus className="h-4 w-4" /> Create New Program
             </Button>
             <Button size="sm" variant="gold" onClick={() => setShowAnnouncementModal(true)}>
               <Plus className="h-4 w-4" /> New Announcement
@@ -504,33 +599,33 @@ function AdminDashboardContent() {
               <Plus className="h-4 w-4" /> New Event
             </Button>
             <Button size="sm" variant="outline" onClick={() => setShowGalleryModal(true)}>
-              <Upload className="h-4 w-4" /> Upload Image File
+              <Upload className="h-4 w-4" /> Upload Photo File
             </Button>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-6">
-            {/* Recent Announcements Overview */}
             <Card>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-sand-900 text-base">Recent Announcements</h3>
-                <button onClick={() => setActiveTab("announcements")} className="text-xs font-bold text-emerald-600 hover:underline">
-                  View All →
+                <h3 className="font-bold text-sand-900 text-base">Active Programs Builder</h3>
+                <button onClick={() => setActiveTab("programs")} className="text-xs font-bold text-emerald-600 hover:underline">
+                  Manage Programs →
                 </button>
               </div>
               <div className="space-y-3">
-                {announcementsList.slice(0, 3).map((ann) => (
-                  <div key={ann.id} className="p-3 rounded-xl bg-sand-50 border border-sand-100 flex items-start gap-3">
-                    <Megaphone className="h-4 w-4 text-emerald-600 mt-1 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-sm text-sand-900 truncate">{ann.title}</p>
-                      <p className="text-xs text-sand-500 line-clamp-1">{ann.content}</p>
+                {programsList.slice(0, 3).map((prog) => (
+                  <div key={prog.id} className="p-3 rounded-xl bg-sand-50 border border-sand-100 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-bold text-sm text-sand-900">{prog.title}</p>
+                      <p className="text-xs text-sand-500 line-clamp-1">{prog.description}</p>
                     </div>
+                    <Link href={`/programs/${prog.id}`} target="_blank" className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg">
+                      <ExternalLink className="h-4 w-4" />
+                    </Link>
                   </div>
                 ))}
               </div>
             </Card>
 
-            {/* Upcoming Events Overview */}
             <Card>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-sand-900 text-base">Upcoming Events</h3>
@@ -557,6 +652,64 @@ function AdminDashboardContent() {
             </Card>
           </div>
         </div>
+      )}
+
+      {/* Program Builder Tab */}
+      {activeTab === "programs" && (
+        <Card id="programs">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-sand-900">Program Builder Control Panel</h3>
+              <p className="text-xs text-sand-500">Create & manage detailed program pages (e.g. English Medium School, Quranic Studies)</p>
+            </div>
+            <Button size="sm" onClick={() => setShowProgramModal(true)}>
+              <Plus className="h-4 w-4" /> Create New Program
+            </Button>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {programsList.map((program) => (
+              <div key={program.id} className="p-5 rounded-2xl border border-sand-200 bg-white hover:shadow-lg transition-all flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <Badge variant="success" className="uppercase text-[10px]">
+                      {program.category}
+                    </Badge>
+                    <Link
+                      href={`/programs/${program.id}`}
+                      target="_blank"
+                      className="text-xs text-emerald-600 font-bold hover:underline inline-flex items-center gap-1"
+                    >
+                      View Live Page <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </div>
+                  <h4 className="font-bold text-sand-900 text-lg mb-2">{program.title}</h4>
+                  <p className="text-sm text-sand-500 line-clamp-3 mb-4">{program.description}</p>
+                </div>
+
+                <div className="pt-4 border-t border-sand-100 flex items-center justify-between">
+                  <span className="text-xs text-sand-400 font-medium">
+                    📅 {program.schedule || "Flexible"}
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setEditingProgram(program)}
+                      className="p-2 rounded-lg hover:bg-sand-100 text-sand-500 hover:text-emerald-600 cursor-pointer"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteProgram(program.id)}
+                      className="p-2 rounded-lg hover:bg-red-50 text-sand-500 hover:text-red-500 cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       )}
 
       {/* Users Tab */}
@@ -841,6 +994,148 @@ function AdminDashboardContent() {
         </Card>
       )}
 
+      {/* Program Create Modal */}
+      <Modal
+        isOpen={showProgramModal}
+        onClose={() => setShowProgramModal(false)}
+        title="Create New Program (e.g. English Medium School)"
+      >
+        <form className="space-y-4" onSubmit={handleCreateProgram}>
+          <Input
+            label="Program Title"
+            placeholder="e.g. English Medium School"
+            value={progTitle}
+            onChange={(e) => setProgTitle(e.target.value)}
+            required
+          />
+          <Select
+            label="Category"
+            value={progCategory}
+            onChange={(e) => setProgCategory(e.target.value as any)}
+            options={[
+              { value: "education", label: "Education" },
+              { value: "quran", label: "Quranic Studies" },
+              { value: "youth", label: "Youth & Leadership" },
+              { value: "relief", label: "Community Relief" },
+            ]}
+          />
+          <Textarea
+            label="Short Description"
+            placeholder="Brief overview summary..."
+            rows={2}
+            value={progDesc}
+            onChange={(e) => setProgDesc(e.target.value)}
+            required
+          />
+          <Textarea
+            label="Full Page Content / Curriculum / Introduction"
+            placeholder="Write full detailed curriculum, introduction, and section content for this program..."
+            rows={5}
+            value={progFullContent}
+            onChange={(e) => setProgFullContent(e.target.value)}
+            required
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Schedule"
+              placeholder="e.g. Mon - Fri, 8 AM - 2 PM"
+              value={progSchedule}
+              onChange={(e) => setProgSchedule(e.target.value)}
+            />
+            <Input
+              label="Contact Email"
+              placeholder="admissions@icc.org"
+              value={progContactEmail}
+              onChange={(e) => setProgContactEmail(e.target.value)}
+            />
+          </div>
+          <Input
+            label="CTA Button Text"
+            placeholder="e.g. Register for English Medium School"
+            value={progCtaText}
+            onChange={(e) => setProgCtaText(e.target.value)}
+          />
+
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-sand-800">
+              Banner / Cover Image File (Optional)
+            </label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setProgFile(e.target.files?.[0] || null)}
+              className="text-xs text-sand-600"
+            />
+          </div>
+
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Creating Program..." : "Create & Publish Program"}
+          </Button>
+        </form>
+      </Modal>
+
+      {/* Program Edit Modal */}
+      <Modal
+        isOpen={!!editingProgram}
+        onClose={() => setEditingProgram(null)}
+        title="Edit Program Details"
+      >
+        {editingProgram && (
+          <form className="space-y-4" onSubmit={handleUpdateProgramSubmit}>
+            <Input
+              label="Program Title"
+              value={editingProgram.title}
+              onChange={(e) => setEditingProgram({ ...editingProgram, title: e.target.value })}
+              required
+            />
+            <Select
+              label="Category"
+              value={editingProgram.category}
+              onChange={(e) => setEditingProgram({ ...editingProgram, category: e.target.value as any })}
+              options={[
+                { value: "education", label: "Education" },
+                { value: "quran", label: "Quranic Studies" },
+                { value: "youth", label: "Youth & Leadership" },
+                { value: "relief", label: "Community Relief" },
+              ]}
+            />
+            <Textarea
+              label="Short Description"
+              rows={2}
+              value={editingProgram.description}
+              onChange={(e) => setEditingProgram({ ...editingProgram, description: e.target.value })}
+              required
+            />
+            <Textarea
+              label="Full Page Content / Curriculum"
+              rows={5}
+              value={editingProgram.full_content || ""}
+              onChange={(e) => setEditingProgram({ ...editingProgram, full_content: e.target.value })}
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Schedule"
+                value={editingProgram.schedule || ""}
+                onChange={(e) => setEditingProgram({ ...editingProgram, schedule: e.target.value })}
+              />
+              <Input
+                label="Contact Email"
+                value={editingProgram.contact_email || ""}
+                onChange={(e) => setEditingProgram({ ...editingProgram, contact_email: e.target.value })}
+              />
+            </div>
+            <Input
+              label="CTA Button Text"
+              value={editingProgram.cta_text || ""}
+              onChange={(e) => setEditingProgram({ ...editingProgram, cta_text: e.target.value })}
+            />
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save Program Changes"}
+            </Button>
+          </form>
+        )}
+      </Modal>
+
       {/* User Create Modal */}
       <Modal
         isOpen={showUserModal}
@@ -1061,7 +1356,7 @@ function AdminDashboardContent() {
         )}
       </Modal>
 
-      {/* Gallery File Upload Modal (Direct Supabase Storage) */}
+      {/* Gallery File Upload Modal */}
       <Modal
         isOpen={showGalleryModal}
         onClose={() => {
@@ -1092,7 +1387,6 @@ function AdminDashboardContent() {
             ]}
           />
 
-          {/* File Picker */}
           <div className="space-y-1.5">
             <label className="block text-sm font-semibold text-sand-800">
               Select Image File from Device
@@ -1116,7 +1410,6 @@ function AdminDashboardContent() {
             </div>
           </div>
 
-          {/* Image Preview */}
           {galleryPreviewUrl && (
             <div className="relative aspect-video rounded-xl overflow-hidden border border-sand-200">
               <img src={galleryPreviewUrl} alt="Preview" className="w-full h-full object-cover" />
