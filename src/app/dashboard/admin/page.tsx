@@ -35,12 +35,16 @@ import {
   fetchUserProfiles,
   fetchGalleryItems,
   createAnnouncement,
+  updateAnnouncement,
   deleteAnnouncement,
   createEvent,
+  updateEvent,
   deleteEvent,
   createGalleryItem,
+  updateGalleryItem,
   deleteGalleryItem,
   createUserProfile,
+  updateUserProfile,
   updateUserRole,
   deleteUserProfile,
 } from "@/lib/supabase/api";
@@ -65,11 +69,16 @@ const ROLE_BADGE: Record<string, "success" | "info" | "warning" | "gold"> = {
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"users" | "announcements" | "events" | "gallery" | "donations">("users");
 
-  // Modals
+  // Create Modals
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
+
+  // Edit State & Modals
+  const [editingUser, setEditingUser] = useState<Profile | null>(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -140,13 +149,11 @@ export default function AdminDashboard() {
       email: userEmail,
       role: userRole,
     });
-
     setIsSubmitting(false);
 
     if (result.success) {
       triggerFeedback("success", "User profile created successfully!");
-      if (result.data) setUsersList([result.data, ...usersList]);
-      else refreshAllData();
+      refreshAllData();
     } else {
       triggerFeedback("error", result.error || "Failed to create user profile");
     }
@@ -155,6 +162,27 @@ export default function AdminDashboard() {
     setUserName("");
     setUserEmail("");
     setUserRole("student");
+  };
+
+  const handleUpdateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setIsSubmitting(true);
+
+    const result = await updateUserProfile(editingUser.id, {
+      full_name: editingUser.full_name,
+      email: editingUser.email,
+      role: editingUser.role,
+    });
+    setIsSubmitting(false);
+
+    if (result.success) {
+      triggerFeedback("success", "User profile updated successfully!");
+      setUsersList(usersList.map((u) => (u.id === editingUser.id ? editingUser : u)));
+      setEditingUser(null);
+    } else {
+      triggerFeedback("error", result.error || "Failed to update user profile");
+    }
   };
 
   const handleDeleteUser = async (id: string) => {
@@ -192,8 +220,7 @@ export default function AdminDashboard() {
 
     if (result.success) {
       triggerFeedback("success", "Announcement published!");
-      if (result.data) setAnnouncementsList([result.data, ...announcementsList]);
-      else refreshAllData();
+      refreshAllData();
     } else {
       triggerFeedback("error", result.error || "Failed to publish announcement");
     }
@@ -201,6 +228,30 @@ export default function AdminDashboard() {
     setShowAnnouncementModal(false);
     setAnnTitle("");
     setAnnContent("");
+  };
+
+  const handleUpdateAnnouncementSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAnnouncement) return;
+    setIsSubmitting(true);
+
+    const result = await updateAnnouncement(editingAnnouncement.id, {
+      title: editingAnnouncement.title,
+      content: editingAnnouncement.content,
+      priority: editingAnnouncement.priority,
+      target_role: editingAnnouncement.target_role,
+    });
+    setIsSubmitting(false);
+
+    if (result.success) {
+      triggerFeedback("success", "Announcement updated successfully!");
+      setAnnouncementsList(
+        announcementsList.map((a) => (a.id === editingAnnouncement.id ? editingAnnouncement : a))
+      );
+      setEditingAnnouncement(null);
+    } else {
+      triggerFeedback("error", result.error || "Failed to update announcement");
+    }
   };
 
   const handleDeleteAnnouncement = async (id: string) => {
@@ -227,9 +278,8 @@ export default function AdminDashboard() {
     setIsSubmitting(false);
 
     if (result.success) {
-      triggerFeedback("success", "Event created!");
-      if (result.data) setEventsList([result.data, ...eventsList]);
-      else refreshAllData();
+      triggerFeedback("success", "Event created! Visible live on landing page.");
+      refreshAllData();
     } else {
       triggerFeedback("error", result.error || "Failed to create event");
     }
@@ -242,11 +292,36 @@ export default function AdminDashboard() {
     setEventLoc("");
   };
 
+  const handleUpdateEventSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEvent) return;
+    setIsSubmitting(true);
+
+    const result = await updateEvent(editingEvent.id, {
+      title: editingEvent.title,
+      description: editingEvent.description,
+      date: editingEvent.date,
+      time: editingEvent.time,
+      location: editingEvent.location,
+    });
+    setIsSubmitting(false);
+
+    if (result.success) {
+      triggerFeedback("success", "Event updated! Live updates applied.");
+      setEventsList(eventsList.map((ev) => (ev.id === editingEvent.id ? editingEvent : ev)));
+      setEditingEvent(null);
+      refreshAllData();
+    } else {
+      triggerFeedback("error", result.error || "Failed to update event");
+    }
+  };
+
   const handleDeleteEvent = async (id: string) => {
     const result = await deleteEvent(id);
     if (result.success) {
       triggerFeedback("success", "Event deleted");
       setEventsList(eventsList.filter((ev) => ev.id !== id));
+      refreshAllData();
     } else {
       triggerFeedback("error", result.error || "Failed to delete event");
     }
@@ -265,8 +340,7 @@ export default function AdminDashboard() {
 
     if (result.success) {
       triggerFeedback("success", "Gallery photo added!");
-      if (result.data) setGalleryList([result.data, ...galleryList]);
-      else refreshAllData();
+      refreshAllData();
     } else {
       triggerFeedback("error", result.error || "Failed to add gallery photo");
     }
@@ -435,6 +509,12 @@ export default function AdminDashboard() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button
+                          onClick={() => setEditingUser(user)}
+                          className="p-2 rounded-lg hover:bg-sand-100 text-sand-400 hover:text-emerald-600 transition-colors cursor-pointer"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
                           onClick={() => handleDeleteUser(user.id)}
                           className="p-2 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 transition-colors cursor-pointer"
                         >
@@ -482,6 +562,12 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button
+                    onClick={() => setEditingAnnouncement(ann)}
+                    className="p-2 rounded-lg hover:bg-sand-100 text-sand-400 hover:text-emerald-600 cursor-pointer"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
                     onClick={() => handleDeleteAnnouncement(ann.id)}
                     className="p-2 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 cursor-pointer"
                   >
@@ -521,12 +607,20 @@ export default function AdminDashboard() {
                 <p className="text-sm text-sand-500 mb-3 line-clamp-2">{event.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-sand-400">📍 {event.location}</span>
-                  <button
-                    onClick={() => handleDeleteEvent(event.id)}
-                    className="p-1.5 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 cursor-pointer"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => setEditingEvent(event)}
+                      className="p-1.5 rounded-lg hover:bg-sand-100 text-sand-400 hover:text-emerald-600 cursor-pointer"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteEvent(event.id)}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -625,7 +719,7 @@ export default function AdminDashboard() {
         </Card>
       )}
 
-      {/* User Modal */}
+      {/* User Create Modal */}
       <Modal
         isOpen={showUserModal}
         onClose={() => setShowUserModal(false)}
@@ -650,7 +744,45 @@ export default function AdminDashboard() {
         </form>
       </Modal>
 
-      {/* Announcement Modal */}
+      {/* User Edit Modal */}
+      <Modal
+        isOpen={!!editingUser}
+        onClose={() => setEditingUser(null)}
+        title="Edit User Profile"
+      >
+        {editingUser && (
+          <form className="space-y-4" onSubmit={handleUpdateUserSubmit}>
+            <Input
+              label="Full Name"
+              value={editingUser.full_name}
+              onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+              required
+            />
+            <Input
+              label="Email Address"
+              type="email"
+              value={editingUser.email}
+              onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+              required
+            />
+            <Select
+              label="Role"
+              value={editingUser.role}
+              onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as UserRole })}
+              options={[
+                { value: "student", label: "Student" },
+                { value: "alumni", label: "Alumni" },
+                { value: "admin", label: "Admin" },
+              ]}
+            />
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save User Changes"}
+            </Button>
+          </form>
+        )}
+      </Modal>
+
+      {/* Announcement Create Modal */}
       <Modal
         isOpen={showAnnouncementModal}
         onClose={() => setShowAnnouncementModal(false)}
@@ -687,7 +819,57 @@ export default function AdminDashboard() {
         </form>
       </Modal>
 
-      {/* Event Modal */}
+      {/* Announcement Edit Modal */}
+      <Modal
+        isOpen={!!editingAnnouncement}
+        onClose={() => setEditingAnnouncement(null)}
+        title="Edit Announcement"
+      >
+        {editingAnnouncement && (
+          <form className="space-y-4" onSubmit={handleUpdateAnnouncementSubmit}>
+            <Input
+              label="Title"
+              value={editingAnnouncement.title}
+              onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, title: e.target.value })}
+              required
+            />
+            <Textarea
+              label="Content"
+              rows={4}
+              value={editingAnnouncement.content}
+              onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, content: e.target.value })}
+              required
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <Select
+                label="Priority"
+                value={editingAnnouncement.priority}
+                onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, priority: e.target.value as any })}
+                options={[
+                  { value: "low", label: "Low" },
+                  { value: "medium", label: "Medium" },
+                  { value: "high", label: "High" },
+                ]}
+              />
+              <Select
+                label="Target Audience"
+                value={editingAnnouncement.target_role}
+                onChange={(e) => setEditingAnnouncement({ ...editingAnnouncement, target_role: e.target.value as any })}
+                options={[
+                  { value: "all", label: "Everyone" },
+                  { value: "student", label: "Students" },
+                  { value: "alumni", label: "Alumni" },
+                ]}
+              />
+            </div>
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save Announcement Changes"}
+            </Button>
+          </form>
+        )}
+      </Modal>
+
+      {/* Event Create Modal */}
       <Modal
         isOpen={showEventModal}
         onClose={() => setShowEventModal(false)}
@@ -705,6 +887,56 @@ export default function AdminDashboard() {
             {isSubmitting ? "Creating..." : "Create Event"}
           </Button>
         </form>
+      </Modal>
+
+      {/* Event Edit Modal */}
+      <Modal
+        isOpen={!!editingEvent}
+        onClose={() => setEditingEvent(null)}
+        title="Edit Event"
+      >
+        {editingEvent && (
+          <form className="space-y-4" onSubmit={handleUpdateEventSubmit}>
+            <Input
+              label="Event Title"
+              value={editingEvent.title}
+              onChange={(e) => setEditingEvent({ ...editingEvent, title: e.target.value })}
+              required
+            />
+            <Textarea
+              label="Description"
+              rows={3}
+              value={editingEvent.description}
+              onChange={(e) => setEditingEvent({ ...editingEvent, description: e.target.value })}
+              required
+            />
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="Date"
+                type="date"
+                value={editingEvent.date}
+                onChange={(e) => setEditingEvent({ ...editingEvent, date: e.target.value })}
+                required
+              />
+              <Input
+                label="Time"
+                type="time"
+                value={editingEvent.time}
+                onChange={(e) => setEditingEvent({ ...editingEvent, time: e.target.value })}
+                required
+              />
+            </div>
+            <Input
+              label="Location"
+              value={editingEvent.location}
+              onChange={(e) => setEditingEvent({ ...editingEvent, location: e.target.value })}
+              required
+            />
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Saving..." : "Save Event Changes"}
+            </Button>
+          </form>
+        )}
       </Modal>
 
       {/* Gallery Modal */}

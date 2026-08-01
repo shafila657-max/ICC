@@ -31,7 +31,7 @@ export async function fetchPrograms(): Promise<Program[]> {
     const { data, error } = await supabase
       .from("programs")
       .select("*")
-      .eq("is_active", true);
+      .order("created_at", { ascending: false });
     if (error) {
       console.warn("fetchPrograms Supabase error:", error.message);
       return PROGRAMS;
@@ -124,7 +124,6 @@ export async function fetchAnnouncements(role: UserRole | "all" = "all"): Promis
       .order("created_at", { ascending: false });
 
     if (error || !data || data.length === 0) {
-      console.warn("fetchAnnouncements falling back to constants:", error?.message);
       return ANNOUNCEMENTS.filter(
         (a) => a.target_role === "all" || a.target_role === role
       ) as Announcement[];
@@ -161,7 +160,7 @@ export async function fetchDonations(): Promise<Donation[]> {
 export async function fetchUserProfiles(): Promise<Profile[]> {
   if (!isSupabaseConfigured()) return [];
   try {
-    const { data, error } = await supabase.from("profiles").select("*");
+    const { data, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
     if (error) {
       console.warn("fetchUserProfiles Supabase error:", error.message);
       return [];
@@ -182,13 +181,9 @@ export async function recordDonation(donation: Partial<Donation>): Promise<{ suc
   if (!isSupabaseConfigured()) return { success: true };
   try {
     const { error } = await supabase.from("donations").insert([donation]);
-    if (error) {
-      console.error("recordDonation error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    console.error("recordDonation exception:", err);
     return { success: false, error: err.message || "Failed to record donation" };
   }
 }
@@ -198,13 +193,9 @@ export async function submitEventRSVP(rsvp: { event_id: string; name: string; em
   if (!isSupabaseConfigured()) return { success: true };
   try {
     const { error } = await supabase.from("event_registrations").insert([rsvp]);
-    if (error) {
-      console.error("submitEventRSVP error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    console.error("submitEventRSVP exception:", err);
     return { success: false, error: err.message || "Failed to submit RSVP" };
   }
 }
@@ -214,18 +205,15 @@ export async function submitContactMessage(msg: { name: string; email: string; s
   if (!isSupabaseConfigured()) return { success: true };
   try {
     const { error } = await supabase.from("contact_messages").insert([msg]);
-    if (error) {
-      console.error("submitContactMessage error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    console.error("submitContactMessage exception:", err);
     return { success: false, error: err.message || "Failed to send message" };
   }
 }
 
-/** Create Announcement (Admin) */
+/* ===== Announcement Mutations ===== */
+
 export async function createAnnouncement(announcement: {
   title: string;
   content: string;
@@ -246,40 +234,50 @@ export async function createAnnouncement(announcement: {
       .select()
       .single();
 
-    if (error) {
-      console.error("createAnnouncement error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true, data: data as Announcement };
   } catch (err: any) {
-    console.error("createAnnouncement exception:", err);
     return { success: false, error: err.message };
   }
 }
 
-/** Delete Announcement (Admin) */
+export async function updateAnnouncement(
+  id: string,
+  announcement: Partial<Announcement>
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase
+      .from("announcements")
+      .update(announcement)
+      .eq("id", id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function deleteAnnouncement(id: string): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
     const { error } = await supabase.from("announcements").delete().eq("id", id);
-    if (error) {
-      console.error("deleteAnnouncement error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    console.error("deleteAnnouncement exception:", err);
     return { success: false, error: err.message };
   }
 }
 
-/** Create Event (Admin) */
+/* ===== Event Mutations ===== */
+
 export async function createEvent(event: {
   title: string;
   description: string;
   date: string;
   time: string;
   location: string;
+  is_featured?: boolean;
 }): Promise<{ success: boolean; data?: EventItem; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
@@ -291,39 +289,48 @@ export async function createEvent(event: {
         date: event.date,
         time: event.time,
         location: event.location,
-        is_featured: false,
+        is_featured: event.is_featured ?? false,
       }])
       .select()
       .single();
 
-    if (error) {
-      console.error("createEvent error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true, data: data as EventItem };
   } catch (err: any) {
-    console.error("createEvent exception:", err);
     return { success: false, error: err.message };
   }
 }
 
-/** Delete Event (Admin) */
+export async function updateEvent(
+  id: string,
+  event: Partial<EventItem>
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase
+      .from("events")
+      .update(event)
+      .eq("id", id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function deleteEvent(id: string): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
     const { error } = await supabase.from("events").delete().eq("id", id);
-    if (error) {
-      console.error("deleteEvent error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    console.error("deleteEvent exception:", err);
     return { success: false, error: err.message };
   }
 }
 
-/** Create Gallery Item (Admin) */
+/* ===== Gallery Mutations ===== */
+
 export async function createGalleryItem(item: {
   title: string;
   category: string;
@@ -341,34 +348,40 @@ export async function createGalleryItem(item: {
       .select()
       .single();
 
-    if (error) {
-      console.error("createGalleryItem error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true, data: data as GalleryItem };
   } catch (err: any) {
-    console.error("createGalleryItem exception:", err);
     return { success: false, error: err.message };
   }
 }
 
-/** Delete Gallery Item (Admin) */
+export async function updateGalleryItem(
+  id: string,
+  item: Partial<GalleryItem>
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase.from("gallery_items").update(item).eq("id", id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
 export async function deleteGalleryItem(id: string): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
     const { error } = await supabase.from("gallery_items").delete().eq("id", id);
-    if (error) {
-      console.error("deleteGalleryItem error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    console.error("deleteGalleryItem exception:", err);
     return { success: false, error: err.message };
   }
 }
 
-/** Create Profile / User (Admin) */
+/* ===== User Profile Mutations ===== */
+
 export async function createUserProfile(profile: {
   full_name: string;
   email: string;
@@ -387,45 +400,38 @@ export async function createUserProfile(profile: {
       .select()
       .single();
 
-    if (error) {
-      console.error("createUserProfile error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true, data: data as Profile };
   } catch (err: any) {
-    console.error("createUserProfile exception:", err);
     return { success: false, error: err.message };
   }
 }
 
-/** Update User Role (Admin) */
-export async function updateUserRole(userId: string, role: UserRole): Promise<{ success: boolean; error?: string }> {
+export async function updateUserProfile(
+  userId: string,
+  profile: Partial<Profile>
+): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
-    const { error } = await supabase.from("profiles").update({ role }).eq("id", userId);
-    if (error) {
-      console.error("updateUserRole error:", error.message);
-      return { success: false, error: error.message };
-    }
+    const { error } = await supabase.from("profiles").update(profile).eq("id", userId);
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    console.error("updateUserRole exception:", err);
     return { success: false, error: err.message };
   }
 }
 
-/** Delete User Profile (Admin) */
+export async function updateUserRole(userId: string, role: UserRole): Promise<{ success: boolean; error?: string }> {
+  return updateUserProfile(userId, { role });
+}
+
 export async function deleteUserProfile(userId: string): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
     const { error } = await supabase.from("profiles").delete().eq("id", userId);
-    if (error) {
-      console.error("deleteUserProfile error:", error.message);
-      return { success: false, error: error.message };
-    }
+    if (error) return { success: false, error: error.message };
     return { success: true };
   } catch (err: any) {
-    console.error("deleteUserProfile exception:", err);
     return { success: false, error: err.message };
   }
 }

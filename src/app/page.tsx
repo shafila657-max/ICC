@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Hero from "@/components/landing/Hero";
@@ -16,7 +19,7 @@ import {
 } from "@/lib/supabase/api";
 
 export default async function HomePage() {
-  // Asynchronously query live Supabase database tables (with fallback defaults)
+  // Asynchronously query live Supabase database tables on every request
   const programsData = await fetchPrograms();
   const eventsData = await fetchEvents();
   const testimonialsData = await fetchTestimonials();
