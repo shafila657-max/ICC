@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+export const dynamic = "force-dynamic";
+
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Users,
   Megaphone,
@@ -15,6 +18,7 @@ import {
   AlertCircle,
   ArrowUpRight,
   CheckCircle2,
+  Home,
 } from "lucide-react";
 import {
   Card,
@@ -41,7 +45,6 @@ import {
   updateEvent,
   deleteEvent,
   createGalleryItem,
-  updateGalleryItem,
   deleteGalleryItem,
   createUserProfile,
   updateUserProfile,
@@ -66,8 +69,19 @@ const ROLE_BADGE: Record<string, "success" | "info" | "warning" | "gold"> = {
   alumni: "gold",
 };
 
-export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"users" | "announcements" | "events" | "gallery" | "donations">("users");
+function AdminDashboardContent() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+
+  const [activeTab, setActiveTab] = useState<"overview" | "users" | "announcements" | "events" | "gallery" | "donations">(
+    (tabParam as any) || "overview"
+  );
+
+  useEffect(() => {
+    if (tabParam && ["overview", "users", "announcements", "events", "gallery", "donations"].includes(tabParam)) {
+      setActiveTab(tabParam as any);
+    }
+  }, [tabParam]);
 
   // Create Modals
   const [showUserModal, setShowUserModal] = useState(false);
@@ -395,7 +409,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Stats Grid */}
+      {/* Stats Grid Header */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Total Users", value: String(usersList.length), change: "Live Sync", icon: Users, color: "from-emerald-500 to-emerald-600" },
@@ -421,9 +435,10 @@ export default function AdminDashboard() {
         ))}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+      {/* Tab Navigation */}
+      <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 border-b border-sand-200">
         {[
+          { key: "overview", label: "Overview", icon: Home },
           { key: "users", label: `Users (${usersList.length})`, icon: Users },
           { key: "announcements", label: `Announcements (${announcementsList.length})`, icon: Megaphone },
           { key: "events", label: `Events (${eventsList.length})`, icon: Calendar },
@@ -435,7 +450,7 @@ export default function AdminDashboard() {
             onClick={() => setActiveTab(tab.key as typeof activeTab)}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
               activeTab === tab.key
-                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20 font-bold"
                 : "bg-white text-sand-600 hover:bg-sand-50 border border-sand-200"
             }`}
           >
@@ -444,6 +459,76 @@ export default function AdminDashboard() {
           </button>
         ))}
       </div>
+
+      {/* Overview Tab */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          {/* Quick Action Buttons */}
+          <div className="flex flex-wrap items-center gap-3 p-4 rounded-2xl bg-white border border-sand-200 shadow-sm">
+            <span className="text-xs font-bold uppercase tracking-wider text-sand-400 mr-2">
+              Quick Admin Actions:
+            </span>
+            <Button size="sm" onClick={() => setShowUserModal(true)}>
+              <Plus className="h-4 w-4" /> Add User
+            </Button>
+            <Button size="sm" variant="gold" onClick={() => setShowAnnouncementModal(true)}>
+              <Plus className="h-4 w-4" /> New Announcement
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setShowEventModal(true)}>
+              <Plus className="h-4 w-4" /> New Event
+            </Button>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Recent Announcements Overview */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sand-900 text-base">Recent Announcements</h3>
+                <button onClick={() => setActiveTab("announcements")} className="text-xs font-bold text-emerald-600 hover:underline">
+                  View All →
+                </button>
+              </div>
+              <div className="space-y-3">
+                {announcementsList.slice(0, 3).map((ann) => (
+                  <div key={ann.id} className="p-3 rounded-xl bg-sand-50 border border-sand-100 flex items-start gap-3">
+                    <Megaphone className="h-4 w-4 text-emerald-600 mt-1 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm text-sand-900 truncate">{ann.title}</p>
+                      <p className="text-xs text-sand-500 line-clamp-1">{ann.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Upcoming Events Overview */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sand-900 text-base">Upcoming Events</h3>
+                <button onClick={() => setActiveTab("events")} className="text-xs font-bold text-emerald-600 hover:underline">
+                  View All →
+                </button>
+              </div>
+              <div className="space-y-3">
+                {eventsList.slice(0, 3).map((event) => (
+                  <div key={event.id} className="p-3 rounded-xl bg-sand-50 border border-sand-100 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-xs">
+                        <Calendar className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-sand-900">{event.title}</p>
+                        <p className="text-xs text-sand-400">{event.date} • {event.time}</p>
+                      </div>
+                    </div>
+                    <Badge variant="gold">{event.location}</Badge>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
 
       {/* Users Tab */}
       {activeTab === "users" && (
@@ -955,5 +1040,13 @@ export default function AdminDashboard() {
         </form>
       </Modal>
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-sand-500 font-medium">Loading Dashboard...</div>}>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }

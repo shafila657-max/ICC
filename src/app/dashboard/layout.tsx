@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Star,
-  Moon,
   Home,
   Users,
   Megaphone,
@@ -29,27 +28,27 @@ import type { UserRole } from "@/lib/types";
 
 const ROLE_NAV: Record<
   UserRole,
-  { label: string; href: string; icon: React.ElementType }[]
+  { label: string; href: string; icon: React.ElementType; tab: string }[]
 > = {
   admin: [
-    { label: "Overview", href: "/dashboard/admin", icon: Home },
-    { label: "Users", href: "/dashboard/admin#users", icon: Users },
-    { label: "Announcements", href: "/dashboard/admin#announcements", icon: Megaphone },
-    { label: "Events", href: "/dashboard/admin#events", icon: Calendar },
-    { label: "Gallery", href: "/dashboard/admin#gallery", icon: ImageIcon },
-    { label: "Donations", href: "/dashboard/admin#donations", icon: DollarSign },
+    { label: "Overview", href: "/dashboard/admin?tab=overview", icon: Home, tab: "overview" },
+    { label: "Users", href: "/dashboard/admin?tab=users", icon: Users, tab: "users" },
+    { label: "Announcements", href: "/dashboard/admin?tab=announcements", icon: Megaphone, tab: "announcements" },
+    { label: "Events", href: "/dashboard/admin?tab=events", icon: Calendar, tab: "events" },
+    { label: "Gallery", href: "/dashboard/admin?tab=gallery", icon: ImageIcon, tab: "gallery" },
+    { label: "Donations", href: "/dashboard/admin?tab=donations", icon: DollarSign, tab: "donations" },
   ],
   student: [
-    { label: "Overview", href: "/dashboard/student", icon: Home },
-    { label: "My Courses", href: "/dashboard/student#courses", icon: BookOpen },
-    { label: "Announcements", href: "/dashboard/student#announcements", icon: Bell },
-    { label: "Profile", href: "/dashboard/student#profile", icon: User },
+    { label: "Overview", href: "/dashboard/student", icon: Home, tab: "overview" },
+    { label: "My Courses", href: "/dashboard/student#courses", icon: BookOpen, tab: "courses" },
+    { label: "Announcements", href: "/dashboard/student#announcements", icon: Bell, tab: "announcements" },
+    { label: "Profile", href: "/dashboard/student#profile", icon: User, tab: "profile" },
   ],
   alumni: [
-    { label: "Overview", href: "/dashboard/alumni", icon: Home },
-    { label: "Directory", href: "/dashboard/alumni#directory", icon: Network },
-    { label: "Community", href: "/dashboard/alumni#community", icon: MessageSquare },
-    { label: "Profile", href: "/dashboard/alumni#profile", icon: User },
+    { label: "Overview", href: "/dashboard/alumni", icon: Home, tab: "overview" },
+    { label: "Directory", href: "/dashboard/alumni#directory", icon: Network, tab: "directory" },
+    { label: "Community", href: "/dashboard/alumni#community", icon: MessageSquare, tab: "community" },
+    { label: "Profile", href: "/dashboard/alumni#profile", icon: User, tab: "profile" },
   ],
 };
 
@@ -70,6 +69,7 @@ export default function DashboardLayout({
   const [userRole, setUserRole] = useState<UserRole>("student");
   const [userName, setUserName] = useState("User");
   const [userEmail, setUserEmail] = useState("user@icc.org");
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     const role = (localStorage.getItem("icc_user_role") || "student") as UserRole;
@@ -78,7 +78,13 @@ export default function DashboardLayout({
     setUserRole(role);
     setUserName(name);
     setUserEmail(email);
-  }, []);
+
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tab = urlParams.get("tab") || "overview";
+      setActiveTab(tab);
+    }
+  }, [pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem("icc_user_role");
@@ -117,16 +123,23 @@ export default function DashboardLayout({
         {/* Nav Links */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href.includes("#") && pathname === item.href.split("#")[0]);
+            const isActive =
+              userRole === "admin"
+                ? activeTab === item.tab
+                : pathname === item.href || (item.href.includes("#") && pathname === item.href.split("#")[0]);
+
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => {
+                  setSidebarOpen(false);
+                  setActiveTab(item.tab);
+                }}
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
                   isActive
-                    ? "bg-emerald-50 text-emerald-700 shadow-sm"
+                    ? "bg-emerald-50 text-emerald-700 shadow-sm font-bold"
                     : "text-sand-600 hover:bg-sand-50 hover:text-sand-900"
                 )}
               >
