@@ -3,17 +3,17 @@
 -- Run this script to add registration approval status & alumni updates feed
 -- =============================================
 
--- Add approval status column to profiles
+-- 1. Add approval status columns to profiles table
 ALTER TABLE profiles 
   ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'approved',
   ADD COLUMN IF NOT EXISTS company TEXT DEFAULT '',
   ADD COLUMN IF NOT EXISTS job_title TEXT DEFAULT '';
 
--- Ensure default status for new registrations is pending if inactive
-UPDATE profiles SET status = 'approved' WHERE is_active = true AND status IS NULL;
-UPDATE profiles SET status = 'pending' WHERE is_active = false AND status IS NULL;
+-- 2. Ensure default status for existing profiles
+UPDATE profiles SET status = 'approved' WHERE is_active = true AND (status IS NULL OR status = '');
+UPDATE profiles SET status = 'pending' WHERE is_active = false AND (status IS NULL OR status = '');
 
--- Table for Alumni Community Feed & Discussion Updates
+-- 3. Table for Alumni Community Feed & Discussion Updates
 CREATE TABLE IF NOT EXISTS alumni_updates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   author_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -23,8 +23,9 @@ CREATE TABLE IF NOT EXISTS alumni_updates (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS for alumni_updates
+-- 4. Enable RLS for alumni_updates
 ALTER TABLE alumni_updates ENABLE ROW LEVEL SECURITY;
 
+-- 5. Drop existing policy if present to avoid 42710 duplicate policy errors
 DROP POLICY IF EXISTS "Allow all alumni_updates" ON alumni_updates;
 CREATE POLICY "Allow all alumni_updates" ON alumni_updates FOR ALL USING (true) WITH CHECK (true);
