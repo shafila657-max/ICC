@@ -192,10 +192,10 @@ export const NAV_LINKS = [
 ];
 
 export const DONATION_CATEGORIES = [
-  { id: "zakat", label: "Zakat", description: "Obligatory annual charity", icon: "Scale" },
   { id: "sadaqah", label: "Sadaqah", description: "Voluntary charitable giving", icon: "Heart" },
-  { id: "fitrah", label: "Zakat al-Fitr", description: "End of Ramadan charity", icon: "Moon" },
-  { id: "general", label: "General", description: "Support our programs", icon: "HandHeart" },
+  { id: "general", label: "General", description: "Support our programs and operations", icon: "HandHeart" },
+  { id: "education", label: "Education Fund", description: "Support student scholarships", icon: "BookOpen" },
+  { id: "facility", label: "Facility Fund", description: "Maintain center facilities", icon: "Building" },
 ] as const;
 
 export const DONATION_PRESETS = [25, 50, 100, 250, 500, 1000];

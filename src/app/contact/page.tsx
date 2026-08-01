@@ -103,8 +103,8 @@ export default async function ContactPage() {
       a: "We offer weekend Islamic school, Tajweed & Quran memorization, youth leadership summer camps, and sports clubs designed for all age groups.",
     },
     {
-      q: "How do you distribute Zakat?",
-      a: "Zakat funds are strictly audited and distributed 100% to verified local families in need, emergency relief efforts, and educational scholarships in accordance with Islamic jurisprudence.",
+      q: "How are donations utilized?",
+      a: "Donations directly fund our educational programs, student scholarships, facility upkeep, and community programs. Transparent financial reports are published regularly.",
     },
   ];
 
