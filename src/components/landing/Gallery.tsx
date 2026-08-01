@@ -4,10 +4,8 @@ import React, { useState } from "react";
 import { X, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
 import { Container, SectionHeading, Badge } from "@/components/ui";
 import { GALLERY_ITEMS } from "@/lib/constants";
+import type { GalleryItem } from "@/lib/types";
 
-const CATEGORIES = ["All", ...Array.from(new Set(GALLERY_ITEMS.map((item) => item.category)))];
-
-// Color palette for placeholder images
 const PLACEHOLDER_COLORS = [
   "from-emerald-300 to-emerald-500",
   "from-gold-300 to-gold-500",
@@ -19,14 +17,20 @@ const PLACEHOLDER_COLORS = [
   "from-teal-200 to-emerald-400",
 ];
 
-export default function Gallery() {
+interface GalleryProps {
+  itemsList?: GalleryItem[];
+}
+
+export default function Gallery({ itemsList = GALLERY_ITEMS }: GalleryProps) {
   const [activeCategory, setActiveCategory] = useState("All");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  const categories = ["All", ...Array.from(new Set(itemsList.map((item) => item.category)))];
+
   const filtered =
     activeCategory === "All"
-      ? GALLERY_ITEMS
-      : GALLERY_ITEMS.filter((item) => item.category === activeCategory);
+      ? itemsList
+      : itemsList.filter((item) => item.category === activeCategory);
 
   const openLightbox = (index: number) => setLightboxIndex(index);
   const closeLightbox = () => setLightboxIndex(null);
@@ -51,13 +55,13 @@ export default function Gallery() {
 
         {/* Category Filters */}
         <div className="flex flex-wrap justify-center gap-2 mb-10">
-          {CATEGORIES.map((cat) => (
+          {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all cursor-pointer ${
                 activeCategory === cat
-                  ? "btn-gradient text-white shadow-md"
+                  ? "btn-gradient text-white shadow-md font-bold"
                   : "bg-sand-100 text-sand-600 hover:bg-sand-200"
               }`}
             >
@@ -72,21 +76,28 @@ export default function Gallery() {
             <button
               key={item.id}
               onClick={() => openLightbox(i)}
-              className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer"
+              className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer border border-sand-200 bg-sand-100 shadow-sm hover:shadow-xl transition-all duration-300"
             >
-              {/* Placeholder colored background */}
-              <div
-                className={`absolute inset-0 bg-gradient-to-br ${
-                  PLACEHOLDER_COLORS[i % PLACEHOLDER_COLORS.length]
-                } flex items-center justify-center`}
-              >
-                <ImageIcon className="h-10 w-10 text-white/30" />
-              </div>
+              {item.image_url ? (
+                <img
+                  src={item.image_url}
+                  alt={item.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              ) : (
+                <div
+                  className={`absolute inset-0 bg-gradient-to-br ${
+                    PLACEHOLDER_COLORS[i % PLACEHOLDER_COLORS.length]
+                  } flex items-center justify-center`}
+                >
+                  <ImageIcon className="h-10 w-10 text-white/40" />
+                </div>
+              )}
 
-              {/* Hover overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+              {/* Hover Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
                 <div>
-                  <p className="text-white font-semibold text-sm">
+                  <p className="text-white font-bold text-sm text-left">
                     {item.title}
                   </p>
                   <Badge variant="gold" className="mt-1 text-[10px]">
@@ -94,16 +105,13 @@ export default function Gallery() {
                   </Badge>
                 </div>
               </div>
-
-              {/* Hover scale */}
-              <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-500" />
             </button>
           ))}
         </div>
       </Container>
 
-      {/* Lightbox */}
-      {lightboxIndex !== null && (
+      {/* Lightbox Viewer */}
+      {lightboxIndex !== null && filtered[lightboxIndex] && (
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center animate-fade-in">
           <button
             onClick={closeLightbox}
@@ -119,21 +127,28 @@ export default function Gallery() {
             <ChevronLeft className="h-8 w-8" />
           </button>
 
-          <div className="max-w-4xl w-full mx-8">
-            <div
-              className={`aspect-video rounded-2xl bg-gradient-to-br ${
-                PLACEHOLDER_COLORS[lightboxIndex % PLACEHOLDER_COLORS.length]
-              } flex items-center justify-center`}
-            >
-              <div className="text-center text-white">
-                <ImageIcon className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                <p className="text-xl font-bold">
-                  {filtered[lightboxIndex].title}
-                </p>
-                <Badge variant="gold" className="mt-2">
-                  {filtered[lightboxIndex].category}
-                </Badge>
+          <div className="max-w-4xl max-h-[80vh] w-full mx-8 flex flex-col items-center justify-center">
+            {filtered[lightboxIndex].image_url ? (
+              <img
+                src={filtered[lightboxIndex].image_url}
+                alt={filtered[lightboxIndex].title}
+                className="max-h-[70vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl border border-white/20"
+              />
+            ) : (
+              <div
+                className={`w-full aspect-video rounded-2xl bg-gradient-to-br ${
+                  PLACEHOLDER_COLORS[lightboxIndex % PLACEHOLDER_COLORS.length]
+                } flex items-center justify-center`}
+              >
+                <ImageIcon className="h-16 w-16 text-white/40" />
               </div>
+            )}
+
+            <div className="mt-4 text-center text-white">
+              <p className="text-xl font-bold">{filtered[lightboxIndex].title}</p>
+              <Badge variant="gold" className="mt-1">
+                {filtered[lightboxIndex].category}
+              </Badge>
             </div>
           </div>
 

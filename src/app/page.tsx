@@ -34,7 +34,7 @@ export default async function HomePage() {
         <Programs />
         <Events eventsList={eventsData} />
         <Donations />
-        <Gallery />
+        <Gallery itemsList={galleryData} />
         <Testimonials />
         <Contact />
       </main>
