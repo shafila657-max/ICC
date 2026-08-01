@@ -33,19 +33,18 @@ import {
   fetchEvents,
   fetchDonations,
   fetchUserProfiles,
+  fetchGalleryItems,
   createAnnouncement,
+  deleteAnnouncement,
   createEvent,
+  deleteEvent,
+  createGalleryItem,
+  deleteGalleryItem,
+  createUserProfile,
   updateUserRole,
+  deleteUserProfile,
 } from "@/lib/supabase/api";
-import type { Announcement, EventItem, Donation, Profile, UserRole } from "@/lib/types";
-
-/* ===== Stats Cards ===== */
-const ADMIN_STATS = [
-  { label: "Total Users", value: "1,247", change: "+12%", icon: Users, color: "from-emerald-500 to-emerald-600" },
-  { label: "Announcements", value: "24", change: "+3", icon: Megaphone, color: "from-blue-500 to-blue-600" },
-  { label: "Events", value: "8", change: "+2", icon: Calendar, color: "from-purple-500 to-purple-600" },
-  { label: "Donations", value: "$128K", change: "+18%", icon: DollarSign, color: "from-gold-500 to-gold-600" },
-];
+import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole } from "@/lib/types";
 
 /* ===== Mock Fallback Users ===== */
 const MOCK_USERS: Profile[] = [
@@ -64,28 +63,45 @@ const ROLE_BADGE: Record<string, "success" | "info" | "warning" | "gold"> = {
 };
 
 export default function AdminDashboard() {
-  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"users" | "announcements" | "events" | "gallery" | "donations">("users");
 
-  // State loaded from Supabase backend (with seed fallback)
+  // Modals
+  const [showUserModal, setShowUserModal] = useState(false);
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Live Backend Data States
   const [usersList, setUsersList] = useState<Profile[]>(MOCK_USERS);
   const [announcementsList, setAnnouncementsList] = useState<Announcement[]>(ANNOUNCEMENTS as Announcement[]);
   const [eventsList, setEventsList] = useState<EventItem[]>(EVENTS as EventItem[]);
+  const [galleryList, setGalleryList] = useState<GalleryItem[]>(GALLERY_ITEMS as GalleryItem[]);
   const [donationsList, setDonationsList] = useState<Donation[]>(DONATIONS as Donation[]);
 
-  // Form states
+  // User Form
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userRole, setUserRole] = useState<UserRole>("student");
+
+  // Announcement Form
   const [annTitle, setAnnTitle] = useState("");
   const [annContent, setAnnContent] = useState("");
   const [annPriority, setAnnPriority] = useState<any>("low");
   const [annTarget, setAnnTarget] = useState<any>("all");
 
+  // Event Form
   const [eventTitle, setEventTitle] = useState("");
   const [eventDesc, setEventDesc] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventTime, setEventTime] = useState("");
   const [eventLoc, setEventLoc] = useState("");
+
+  // Gallery Form
+  const [galleryTitle, setGalleryTitle] = useState("");
+  const [galleryCategory, setGalleryCategory] = useState("Events");
+  const [galleryUrl, setGalleryUrl] = useState("");
 
   useEffect(() => {
     async function loadBackendData() {
@@ -98,12 +114,51 @@ export default function AdminDashboard() {
       const dbEvents = await fetchEvents();
       if (dbEvents.length > 0) setEventsList(dbEvents);
 
+      const dbGallery = await fetchGalleryItems();
+      if (dbGallery.length > 0) setGalleryList(dbGallery);
+
       const dbDonations = await fetchDonations();
       if (dbDonations.length > 0) setDonationsList(dbDonations);
     }
     loadBackendData();
   }, []);
 
+  /* ===== User Handlers ===== */
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newProfile: Partial<Profile> = {
+      full_name: userName,
+      email: userEmail,
+      role: userRole,
+      is_active: true,
+      created_at: new Date().toISOString().split("T")[0],
+    };
+
+    const result = await createUserProfile(newProfile);
+    if (result.success) {
+      setUsersList([result.data || ({ ...newProfile, id: String(Date.now()) } as Profile), ...usersList]);
+    } else {
+      setUsersList([{ ...newProfile, id: String(Date.now()) } as Profile, ...usersList]);
+    }
+
+    setShowUserModal(false);
+    setUserName("");
+    setUserEmail("");
+    setUserRole("student");
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    await deleteUserProfile(id);
+    setUsersList(usersList.filter((u) => u.id !== id));
+  };
+
+  const handleRoleToggle = async (id: string, currentRole: UserRole) => {
+    const nextRole: UserRole = currentRole === "student" ? "alumni" : currentRole === "alumni" ? "admin" : "student";
+    await updateUserRole(id, nextRole);
+    setUsersList(usersList.map((u) => (u.id === id ? { ...u, role: nextRole } : u)));
+  };
+
+  /* ===== Announcement Handlers ===== */
   const handleCreateAnnouncement = async (e: React.FormEvent) => {
     e.preventDefault();
     const newAnn: Partial<Announcement> = {
@@ -115,13 +170,19 @@ export default function AdminDashboard() {
       created_at: new Date().toISOString().split("T")[0],
     };
 
-    await createAnnouncement(newAnn);
-    setAnnouncementsList([{ ...newAnn, id: String(Date.now()) } as Announcement, ...announcementsList]);
+    const result = await createAnnouncement(newAnn);
+    setAnnouncementsList([result.data || ({ ...newAnn, id: String(Date.now()) } as Announcement), ...announcementsList]);
     setShowAnnouncementModal(false);
     setAnnTitle("");
     setAnnContent("");
   };
 
+  const handleDeleteAnnouncement = async (id: string) => {
+    await deleteAnnouncement(id);
+    setAnnouncementsList(announcementsList.filter((a) => a.id !== id));
+  };
+
+  /* ===== Event Handlers ===== */
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     const newEv: Partial<EventItem> = {
@@ -133,8 +194,8 @@ export default function AdminDashboard() {
       is_featured: false,
     };
 
-    await createEvent(newEv);
-    setEventsList([{ ...newEv, id: String(Date.now()) } as EventItem, ...eventsList]);
+    const result = await createEvent(newEv);
+    setEventsList([result.data || ({ ...newEv, id: String(Date.now()) } as EventItem), ...eventsList]);
     setShowEventModal(false);
     setEventTitle("");
     setEventDesc("");
@@ -142,6 +203,37 @@ export default function AdminDashboard() {
     setEventTime("");
     setEventLoc("");
   };
+
+  const handleDeleteEvent = async (id: string) => {
+    await deleteEvent(id);
+    setEventsList(eventsList.filter((ev) => ev.id !== id));
+  };
+
+  /* ===== Gallery Handlers ===== */
+  const handleCreateGallery = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newItem: Partial<GalleryItem> = {
+      title: galleryTitle,
+      category: galleryCategory,
+      image_url: galleryUrl || "/gallery/iftar.jpg",
+      created_at: new Date().toISOString().split("T")[0],
+    };
+
+    const result = await createGalleryItem(newItem);
+    setGalleryList([result.data || ({ ...newItem, id: String(Date.now()) } as GalleryItem), ...galleryList]);
+    setShowGalleryModal(false);
+    setGalleryTitle("");
+    setGalleryUrl("");
+  };
+
+  const handleDeleteGallery = async (id: string) => {
+    await deleteGalleryItem(id);
+    setGalleryList(galleryList.filter((g) => g.id !== id));
+  };
+
+  /* ===== Calculations ===== */
+  const totalDonations = donationsList.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const avgDonation = donationsList.length > 0 ? totalDonations / donationsList.length : 0;
 
   const filteredUsers = usersList.filter(
     (u) =>
@@ -153,7 +245,12 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {ADMIN_STATS.map((stat) => (
+        {[
+          { label: "Total Users", value: String(usersList.length), change: "Live Sync", icon: Users, color: "from-emerald-500 to-emerald-600" },
+          { label: "Announcements", value: String(announcementsList.length), change: "Active", icon: Megaphone, color: "from-blue-500 to-blue-600" },
+          { label: "Events", value: String(eventsList.length), change: "Upcoming", icon: Calendar, color: "from-purple-500 to-purple-600" },
+          { label: "Donations", value: formatCurrency(totalDonations), change: `${donationsList.length} Raised`, icon: DollarSign, color: "from-gold-500 to-gold-600" },
+        ].map((stat) => (
           <Card key={stat.label} className="relative overflow-hidden group">
             <div className="flex items-start justify-between">
               <div>
@@ -175,11 +272,11 @@ export default function AdminDashboard() {
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
         {[
-          { key: "users", label: "Users", icon: Users },
-          { key: "announcements", label: "Announcements", icon: Megaphone },
-          { key: "events", label: "Events", icon: Calendar },
-          { key: "gallery", label: "Gallery", icon: ImageIcon },
-          { key: "donations", label: "Donations", icon: DollarSign },
+          { key: "users", label: `Users (${usersList.length})`, icon: Users },
+          { key: "announcements", label: `Announcements (${announcementsList.length})`, icon: Megaphone },
+          { key: "events", label: `Events (${eventsList.length})`, icon: Calendar },
+          { key: "gallery", label: `Gallery (${galleryList.length})`, icon: ImageIcon },
+          { key: "donations", label: `Donations (${donationsList.length})`, icon: DollarSign },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -212,7 +309,9 @@ export default function AdminDashboard() {
                   className="pl-10 pr-4 py-2.5 rounded-xl border border-sand-200 text-sm w-full focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
                 />
               </div>
-              <Button size="sm"><Plus className="h-4 w-4" /> Add User</Button>
+              <Button size="sm" onClick={() => setShowUserModal(true)}>
+                <Plus className="h-4 w-4" /> Add User
+              </Button>
             </div>
           </div>
 
@@ -240,21 +339,27 @@ export default function AdminDashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <Badge variant={ROLE_BADGE[user.role]}>{user.role}</Badge>
+                      <button
+                        onClick={() => handleRoleToggle(user.id, user.role)}
+                        title="Click to toggle role"
+                        className="cursor-pointer"
+                      >
+                        <Badge variant={ROLE_BADGE[user.role]}>{user.role} 🔄</Badge>
+                      </button>
                     </td>
                     <td className="px-6 py-4 hidden md:table-cell">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.is_active ? "text-emerald-600" : "text-sand-400"}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${user.is_active ? "bg-emerald-500" : "bg-sand-300"}`} />
-                        {user.is_active ? "active" : "inactive"}
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${user.is_active !== false ? "text-emerald-600" : "text-sand-400"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${user.is_active !== false ? "bg-emerald-500" : "bg-sand-300"}`} />
+                        {user.is_active !== false ? "active" : "inactive"}
                       </span>
                     </td>
                     <td className="px-6 py-4 hidden lg:table-cell text-sand-500">{formatDate(user.created_at)}</td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button className="p-2 rounded-lg hover:bg-sand-100 text-sand-400 hover:text-sand-600 transition-colors cursor-pointer">
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button className="p-2 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 transition-colors cursor-pointer">
+                        <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="p-2 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 transition-colors cursor-pointer"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
@@ -297,6 +402,14 @@ export default function AdminDashboard() {
                   <p className="text-sm text-sand-500 line-clamp-2">{ann.content}</p>
                   <p className="text-xs text-sand-400 mt-2">{formatDate(ann.created_at)}</p>
                 </div>
+                <div className="flex gap-1 shrink-0">
+                  <button
+                    onClick={() => handleDeleteAnnouncement(ann.id)}
+                    className="p-2 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -330,6 +443,12 @@ export default function AdminDashboard() {
                 <p className="text-sm text-sand-500 mb-3 line-clamp-2">{event.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-sand-400">📍 {event.location}</span>
+                  <button
+                    onClick={() => handleDeleteEvent(event.id)}
+                    className="p-1.5 rounded-lg hover:bg-red-50 text-sand-400 hover:text-red-500 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             ))}
@@ -342,13 +461,23 @@ export default function AdminDashboard() {
         <Card id="gallery">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-sand-900">Gallery Manager</h3>
-            <Button size="sm"><Plus className="h-4 w-4" /> Upload Image</Button>
+            <Button size="sm" onClick={() => setShowGalleryModal(true)}>
+              <Plus className="h-4 w-4" /> Upload Image
+            </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {GALLERY_ITEMS.map((item) => (
+            {galleryList.map((item) => (
               <div key={item.id} className="group relative aspect-square rounded-xl bg-gradient-to-br from-emerald-200 to-emerald-300 overflow-hidden">
                 <div className="absolute inset-0 flex items-center justify-center">
                   <ImageIcon className="h-8 w-8 text-emerald-500/30" />
+                </div>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                  <button
+                    onClick={() => handleDeleteGallery(item.id)}
+                    className="p-2 rounded-full bg-white/90 text-red-500 hover:bg-white cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
                   <p className="text-white text-xs font-medium truncate">{item.title}</p>
@@ -367,6 +496,20 @@ export default function AdminDashboard() {
             <Badge variant="success">
               <TrendingUp className="h-3 w-3" /> Live Backend Connected
             </Badge>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {[
+              { label: "Total Raised", value: formatCurrency(totalDonations), color: "text-emerald-600" },
+              { label: "Total Donors", value: String(donationsList.length), color: "text-blue-600" },
+              { label: "Avg. Donation", value: formatCurrency(avgDonation), color: "text-gold-600" },
+              { label: "Categories", value: "4 Funds", color: "text-purple-600" },
+            ].map((item) => (
+              <div key={item.label} className="p-4 rounded-xl bg-sand-50 border border-sand-100">
+                <p className="text-xs text-sand-500 mb-1">{item.label}</p>
+                <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
+              </div>
+            ))}
           </div>
 
           <h4 className="font-semibold text-sand-900 mb-3">Recent Donations</h4>
@@ -404,6 +547,29 @@ export default function AdminDashboard() {
         </Card>
       )}
 
+      {/* User Modal */}
+      <Modal
+        isOpen={showUserModal}
+        onClose={() => setShowUserModal(false)}
+        title="Add New User Profile"
+      >
+        <form className="space-y-4" onSubmit={handleAddUser}>
+          <Input label="Full Name" placeholder="Full name" value={userName} onChange={(e) => setUserName(e.target.value)} required />
+          <Input label="Email Address" type="email" placeholder="user@example.com" value={userEmail} onChange={(e) => setUserEmail(e.target.value)} required />
+          <Select
+            label="Role"
+            value={userRole}
+            onChange={(e) => setUserRole(e.target.value as UserRole)}
+            options={[
+              { value: "student", label: "Student" },
+              { value: "alumni", label: "Alumni" },
+              { value: "admin", label: "Admin" },
+            ]}
+          />
+          <Button type="submit" className="w-full">Create User Profile</Button>
+        </form>
+      </Modal>
+
       {/* Announcement Modal */}
       <Modal
         isOpen={showAnnouncementModal}
@@ -411,12 +577,11 @@ export default function AdminDashboard() {
         title="New Announcement"
       >
         <form className="space-y-4" onSubmit={handleCreateAnnouncement}>
-          <Input label="Title" id="ann-title" placeholder="Announcement title" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} required />
-          <Textarea label="Content" id="ann-content" placeholder="Write your announcement..." rows={4} value={annContent} onChange={(e) => setAnnContent(e.target.value)} required />
+          <Input label="Title" placeholder="Announcement title" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} required />
+          <Textarea label="Content" placeholder="Write your announcement..." rows={4} value={annContent} onChange={(e) => setAnnContent(e.target.value)} required />
           <div className="grid grid-cols-2 gap-4">
             <Select
               label="Priority"
-              id="ann-priority"
               value={annPriority}
               onChange={(e) => setAnnPriority(e.target.value)}
               options={[
@@ -427,7 +592,6 @@ export default function AdminDashboard() {
             />
             <Select
               label="Target Audience"
-              id="ann-target"
               value={annTarget}
               onChange={(e) => setAnnTarget(e.target.value)}
               options={[
@@ -448,14 +612,28 @@ export default function AdminDashboard() {
         title="New Event"
       >
         <form className="space-y-4" onSubmit={handleCreateEvent}>
-          <Input label="Event Title" id="event-title" placeholder="Event name" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} required />
-          <Textarea label="Description" id="event-desc" placeholder="Event description..." rows={3} value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} required />
+          <Input label="Event Title" placeholder="Event name" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} required />
+          <Textarea label="Description" placeholder="Event description..." rows={3} value={eventDesc} onChange={(e) => setEventDesc(e.target.value)} required />
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Date" id="event-date" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required />
-            <Input label="Time" id="event-time" type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} required />
+            <Input label="Date" type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} required />
+            <Input label="Time" type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} required />
           </div>
-          <Input label="Location" id="event-location" placeholder="Event venue" value={eventLoc} onChange={(e) => setEventLoc(e.target.value)} required />
+          <Input label="Location" placeholder="Event venue" value={eventLoc} onChange={(e) => setEventLoc(e.target.value)} required />
           <Button type="submit" className="w-full">Create Event</Button>
+        </form>
+      </Modal>
+
+      {/* Gallery Modal */}
+      <Modal
+        isOpen={showGalleryModal}
+        onClose={() => setShowGalleryModal(false)}
+        title="Add Gallery Photo"
+      >
+        <form className="space-y-4" onSubmit={handleCreateGallery}>
+          <Input label="Title" placeholder="Photo title" value={galleryTitle} onChange={(e) => setGalleryTitle(e.target.value)} required />
+          <Input label="Category" placeholder="e.g. Events, Education, Youth" value={galleryCategory} onChange={(e) => setGalleryCategory(e.target.value)} required />
+          <Input label="Image URL" placeholder="https://example.com/photo.jpg" value={galleryUrl} onChange={(e) => setGalleryUrl(e.target.value)} />
+          <Button type="submit" className="w-full">Add Gallery Photo</Button>
         </form>
       </Modal>
     </div>
