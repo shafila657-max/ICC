@@ -20,9 +20,9 @@ export const PROGRAMS: Program[] = [
   },
   {
     id: "3",
-    title: "Community Relief",
-    description: "Emergency aid, food distribution, and housing support for families in need.",
-    category: "relief",
+    title: "Community Outreach",
+    description: "General community outreach and support programs.",
+    category: "education",
     is_active: true,
     created_at: "2024-03-10",
   },
@@ -164,10 +164,8 @@ export const ANNOUNCEMENTS: Announcement[] = [
 
 /* ===== Donations ===== */
 export const DONATIONS: Donation[] = [
-  { id: "1", donor_name: "Anonymous", donor_email: "anon@email.com", amount: 5000, category: "zakat", is_anonymous: true, created_at: "2026-01-15" },
   { id: "2", donor_name: "Ahmed Khan", donor_email: "ahmed@email.com", amount: 1000, category: "sadaqah", message: "For the youth program", is_anonymous: false, created_at: "2026-02-01" },
   { id: "3", donor_name: "Zainab Ali", donor_email: "zainab@email.com", amount: 2500, category: "general", is_anonymous: false, created_at: "2026-02-20" },
-  { id: "4", donor_name: "Anonymous", donor_email: "donor@email.com", amount: 500, category: "fitrah", is_anonymous: true, created_at: "2026-03-01" },
 ];
 
 /* ===== Stats ===== */

@@ -588,32 +588,7 @@ function AdminDashboardContent() {
         ))}
       </div>
 
-      {/* Tab Navigation */}
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2 border-b border-sand-200">
-        {[
-          { key: "overview", label: "Overview", icon: Home },
-          { key: "onboarding", label: `Onboarding Approvals (${pendingUsersList.length})`, icon: UserCheck },
-          { key: "programs", label: `Programs Builder (${programsList.length})`, icon: GraduationCap },
-          { key: "users", label: `Users (${usersList.length})`, icon: Users },
-          { key: "announcements", label: `Announcements (${announcementsList.length})`, icon: Megaphone },
-          { key: "events", label: `Events (${eventsList.length})`, icon: Calendar },
-          { key: "gallery", label: `Gallery (${galleryList.length})`, icon: ImageIcon },
-          { key: "donations", label: `Donations (${donationsList.length})`, icon: DollarSign },
-        ].map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as typeof activeTab)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === tab.key
-                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20 font-bold"
-                : "bg-white text-sand-600 hover:bg-sand-50 border border-sand-200"
-            }`}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Horizontal Tabs Removed - Using Sidebar Navigation */}
 
       {/* Overview Tab */}
       {activeTab === "overview" && (
