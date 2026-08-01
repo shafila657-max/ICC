@@ -235,7 +235,7 @@ export default async function ContactPage() {
                 <div className="relative aspect-video w-full rounded-2xl overflow-hidden border border-sand-200 shadow-inner">
                   <iframe
                     title="ICC Location Map"
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d196281.33644265147!2d-89.72895696515865!3d39.78172127263595!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x88753995ef393ff7%3A0xb35a0928e18ef930!2sSpringfield%2C%20IL!5e0!3m2!1sen!2sus!4v1700000000000!5m2!1sen!2sus"
+                    src="https://maps.google.com/maps?q=https://maps.app.goo.gl/jncMLa6U4VD3vmzH6&output=embed"
                     className="w-full h-full border-0"
                     allowFullScreen
                     loading="lazy"
