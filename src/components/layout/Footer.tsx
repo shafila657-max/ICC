@@ -114,12 +114,17 @@ export default function Footer() {
             </h4>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
-                <MapPin className="h-4 w-4 text-gold-400 mt-0.5 shrink-0" />
-                <span className="text-emerald-200/70 text-sm">
+                <MapPin className="h-4 w-4 text-gold-400 mt-1 shrink-0" />
+                <a
+                  href="https://maps.app.goo.gl/jncMLa6U4VD3vmzH6"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-200/70 text-sm hover:text-gold-300 transition-colors"
+                >
                   123 Community Way
                   <br />
                   Springfield, IL 62704
-                </span>
+                </a>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="h-4 w-4 text-gold-400 shrink-0" />

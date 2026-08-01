@@ -188,7 +188,7 @@ export const NAV_LINKS = [
   { label: "Events", href: "/#events" },
   { label: "Gallery", href: "/#gallery" },
   { label: "Donate", href: "/#donate" },
-  { label: "Contact", href: "/#contact" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export const DONATION_CATEGORIES = [

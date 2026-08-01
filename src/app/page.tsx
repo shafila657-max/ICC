@@ -11,7 +11,6 @@ import Events from "@/components/landing/Events";
 import Donations from "@/components/landing/Donations";
 import Gallery from "@/components/landing/Gallery";
 import Testimonials from "@/components/landing/Testimonials";
-import Contact from "@/components/landing/Contact";
 import {
   fetchPrograms,
   fetchEvents,
@@ -38,7 +37,6 @@ export default async function HomePage() {
         <Donations />
         <Gallery itemsList={galleryData} />
         <Testimonials />
-        <Contact />
       </main>
       <Footer />
     </>
