@@ -21,6 +21,49 @@ import type {
 } from "@/lib/types";
 
 /* =============================================
+ * STORAGE SERVICES
+ * ============================================= */
+
+/**
+ * Upload an image file directly to Supabase Storage and return its public URL
+ */
+export async function uploadImageToSupabase(
+  file: File,
+  bucketName = "gallery"
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  if (!isSupabaseConfigured()) {
+    return { success: true, url: URL.createObjectURL(file) };
+  }
+
+  try {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    // Upload to Supabase Storage Bucket
+    const { error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(filePath, file, {
+        cacheControl: "3600",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("Supabase Storage Upload Error:", uploadError.message);
+      return { success: false, error: uploadError.message };
+    }
+
+    // Retrieve Public URL
+    const { data } = supabase.storage.from(bucketName).getPublicUrl(filePath);
+
+    return { success: true, url: data.publicUrl };
+  } catch (err: any) {
+    console.error("Storage upload exception:", err);
+    return { success: false, error: err.message || "Failed to upload image file" };
+  }
+}
+
+/* =============================================
  * READ SERVICES (With Seed Data Fallbacks)
  * ============================================= */
 
@@ -82,7 +125,7 @@ export async function fetchTestimonials(): Promise<Testimonial[]> {
 export async function fetchGalleryItems(): Promise<GalleryItem[]> {
   if (!isSupabaseConfigured()) return GALLERY_ITEMS;
   try {
-    const { data, error } = await supabase.from("gallery_items").select("*");
+    const { data, error } = await supabase.from("gallery_items").select("*").order("created_at", { ascending: false });
     if (error) {
       console.warn("fetchGalleryItems Supabase error:", error.message);
       return GALLERY_ITEMS;
@@ -277,6 +320,7 @@ export async function createEvent(event: {
   date: string;
   time: string;
   location: string;
+  image_url?: string;
   is_featured?: boolean;
 }): Promise<{ success: boolean; data?: EventItem; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
@@ -289,6 +333,7 @@ export async function createEvent(event: {
         date: event.date,
         time: event.time,
         location: event.location,
+        image_url: event.image_url,
         is_featured: event.is_featured ?? false,
       }])
       .select()
@@ -334,7 +379,8 @@ export async function deleteEvent(id: string): Promise<{ success: boolean; error
 export async function createGalleryItem(item: {
   title: string;
   category: string;
-  image_url?: string;
+  image_url: string;
+  description?: string;
 }): Promise<{ success: boolean; data?: GalleryItem; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
@@ -343,7 +389,8 @@ export async function createGalleryItem(item: {
       .insert([{
         title: item.title,
         category: item.category,
-        image_url: item.image_url || "/gallery/iftar.jpg",
+        image_url: item.image_url,
+        description: item.description,
       }])
       .select()
       .single();

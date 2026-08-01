@@ -19,6 +19,7 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Home,
+  Upload,
 } from "lucide-react";
 import {
   Card,
@@ -50,6 +51,7 @@ import {
   updateUserProfile,
   updateUserRole,
   deleteUserProfile,
+  uploadImageToSupabase,
 } from "@/lib/supabase/api";
 import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole } from "@/lib/types";
 
@@ -123,10 +125,11 @@ function AdminDashboardContent() {
   const [eventTime, setEventTime] = useState("");
   const [eventLoc, setEventLoc] = useState("");
 
-  // Gallery Form
+  // Gallery Form & Storage File State
   const [galleryTitle, setGalleryTitle] = useState("");
   const [galleryCategory, setGalleryCategory] = useState("Events");
-  const [galleryUrl, setGalleryUrl] = useState("");
+  const [galleryFile, setGalleryFile] = useState<File | null>(null);
+  const [galleryPreviewUrl, setGalleryPreviewUrl] = useState<string>("");
 
   const refreshAllData = async () => {
     const dbUsers = await fetchUserProfiles();
@@ -341,27 +344,50 @@ function AdminDashboardContent() {
     }
   };
 
-  /* ===== Gallery Handlers ===== */
+  /* ===== Gallery Handlers (File Upload to Supabase Storage) ===== */
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setGalleryFile(file);
+      setGalleryPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
   const handleCreateGallery = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!galleryFile) {
+      triggerFeedback("error", "Please select an image file to upload.");
+      return;
+    }
+
     setIsSubmitting(true);
+
+    // 1. Upload file directly to Supabase Storage bucket
+    const uploadRes = await uploadImageToSupabase(galleryFile, "gallery");
+    if (!uploadRes.success || !uploadRes.url) {
+      setIsSubmitting(false);
+      triggerFeedback("error", uploadRes.error || "Failed to upload image file to Supabase Storage");
+      return;
+    }
+
+    // 2. Insert record into database with public Storage URL
     const result = await createGalleryItem({
       title: galleryTitle,
       category: galleryCategory,
-      image_url: galleryUrl || "/gallery/iftar.jpg",
+      image_url: uploadRes.url,
     });
     setIsSubmitting(false);
 
     if (result.success) {
-      triggerFeedback("success", "Gallery photo added!");
+      triggerFeedback("success", "Image uploaded to Supabase Storage & saved to gallery!");
       refreshAllData();
+      setShowGalleryModal(false);
+      setGalleryTitle("");
+      setGalleryFile(null);
+      setGalleryPreviewUrl("");
     } else {
-      triggerFeedback("error", result.error || "Failed to add gallery photo");
+      triggerFeedback("error", result.error || "Failed to save gallery record");
     }
-
-    setShowGalleryModal(false);
-    setGalleryTitle("");
-    setGalleryUrl("");
   };
 
   const handleDeleteGallery = async (id: string) => {
@@ -476,6 +502,9 @@ function AdminDashboardContent() {
             </Button>
             <Button size="sm" variant="secondary" onClick={() => setShowEventModal(true)}>
               <Plus className="h-4 w-4" /> New Event
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setShowGalleryModal(true)}>
+              <Upload className="h-4 w-4" /> Upload Image File
             </Button>
           </div>
 
@@ -717,17 +746,24 @@ function AdminDashboardContent() {
       {activeTab === "gallery" && (
         <Card id="gallery">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-sand-900">Gallery Manager</h3>
+            <div>
+              <h3 className="text-lg font-bold text-sand-900">Gallery Manager</h3>
+              <p className="text-xs text-sand-500">Upload images directly to Supabase Storage</p>
+            </div>
             <Button size="sm" onClick={() => setShowGalleryModal(true)}>
-              <Plus className="h-4 w-4" /> Upload Image
+              <Upload className="h-4 w-4" /> Upload Image File
             </Button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
             {galleryList.map((item) => (
-              <div key={item.id} className="group relative aspect-square rounded-xl bg-gradient-to-br from-emerald-200 to-emerald-300 overflow-hidden">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <ImageIcon className="h-8 w-8 text-emerald-500/30" />
-                </div>
+              <div key={item.id} className="group relative aspect-square rounded-xl bg-sand-100 border border-sand-200 overflow-hidden">
+                {item.image_url ? (
+                  <img src={item.image_url} alt={item.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <ImageIcon className="h-8 w-8 text-sand-400" />
+                  </div>
+                )}
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                   <button
                     onClick={() => handleDeleteGallery(item.id)}
@@ -736,8 +772,9 @@ function AdminDashboardContent() {
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent">
-                  <p className="text-white text-xs font-medium truncate">{item.title}</p>
+                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                  <p className="text-white text-xs font-bold truncate">{item.title}</p>
+                  <p className="text-[10px] text-gold-300 font-medium">{item.category}</p>
                 </div>
               </div>
             ))}
@@ -1024,18 +1061,70 @@ function AdminDashboardContent() {
         )}
       </Modal>
 
-      {/* Gallery Modal */}
+      {/* Gallery File Upload Modal (Direct Supabase Storage) */}
       <Modal
         isOpen={showGalleryModal}
-        onClose={() => setShowGalleryModal(false)}
-        title="Add Gallery Photo"
+        onClose={() => {
+          setShowGalleryModal(false);
+          setGalleryFile(null);
+          setGalleryPreviewUrl("");
+        }}
+        title="Upload Image File to Supabase Storage"
       >
         <form className="space-y-4" onSubmit={handleCreateGallery}>
-          <Input label="Title" placeholder="Photo title" value={galleryTitle} onChange={(e) => setGalleryTitle(e.target.value)} required />
-          <Input label="Category" placeholder="e.g. Events, Education, Youth" value={galleryCategory} onChange={(e) => setGalleryCategory(e.target.value)} required />
-          <Input label="Image URL" placeholder="https://example.com/photo.jpg" value={galleryUrl} onChange={(e) => setGalleryUrl(e.target.value)} />
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Adding..." : "Add Gallery Photo"}
+          <Input
+            label="Photo Title"
+            placeholder="e.g. Annual Youth Iftar 2026"
+            value={galleryTitle}
+            onChange={(e) => setGalleryTitle(e.target.value)}
+            required
+          />
+
+          <Select
+            label="Category"
+            value={galleryCategory}
+            onChange={(e) => setGalleryCategory(e.target.value)}
+            options={[
+              { value: "Events", label: "Events" },
+              { value: "Education", label: "Education" },
+              { value: "Youth", label: "Youth" },
+              { value: "Community", label: "Community" },
+            ]}
+          />
+
+          {/* File Picker */}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-sand-800">
+              Select Image File from Device
+            </label>
+            <div className="p-4 rounded-xl border-2 border-dashed border-sand-300 hover:border-emerald-500 transition-colors bg-sand-50 text-center cursor-pointer">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                id="gallery-file-input"
+                required
+              />
+              <label htmlFor="gallery-file-input" className="cursor-pointer space-y-2 block">
+                <Upload className="h-8 w-8 text-emerald-600 mx-auto" />
+                <p className="text-xs font-bold text-sand-700">
+                  {galleryFile ? galleryFile.name : "Click to browse and select image file"}
+                </p>
+                <p className="text-[10px] text-sand-400">PNG, JPG, WEBP up to 10MB</p>
+              </label>
+            </div>
+          </div>
+
+          {/* Image Preview */}
+          {galleryPreviewUrl && (
+            <div className="relative aspect-video rounded-xl overflow-hidden border border-sand-200">
+              <img src={galleryPreviewUrl} alt="Preview" className="w-full h-full object-cover" />
+            </div>
+          )}
+
+          <Button type="submit" className="w-full" disabled={isSubmitting || !galleryFile}>
+            {isSubmitting ? "Uploading to Supabase Storage..." : "Upload to Supabase & Save"}
           </Button>
         </form>
       </Modal>

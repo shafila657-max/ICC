@@ -1,6 +1,6 @@
 -- =============================================
 -- Islamic Charity Center (ICC) - Complete Database Schema
--- Supabase PostgreSQL RLS & Grants for Full CRUD Support
+-- Supabase PostgreSQL RLS, Storage Buckets & Grants
 -- =============================================
 
 -- ===== Custom Types & Enums =====
@@ -154,8 +154,29 @@ CREATE TABLE IF NOT EXISTS alumni_updates (
 );
 
 -- =============================================
--- ROW LEVEL SECURITY (RLS) POLICIES & PERMISSIONS
--- Enable full public CRUD for development & demo app
+-- SUPABASE STORAGE BUCKETS SETUP
+-- =============================================
+
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('gallery', 'gallery', true)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('events', 'events', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage RLS Policies
+DROP POLICY IF EXISTS "Public Storage Read" ON storage.objects;
+CREATE POLICY "Public Storage Read" ON storage.objects FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Storage Insert" ON storage.objects;
+CREATE POLICY "Public Storage Insert" ON storage.objects FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Public Storage Delete" ON storage.objects;
+CREATE POLICY "Public Storage Delete" ON storage.objects FOR DELETE USING (true);
+
+-- =============================================
+-- ROW LEVEL SECURITY (RLS) POLICIES
 -- =============================================
 
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -170,7 +191,7 @@ ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE contact_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE alumni_updates ENABLE ROW LEVEL SECURITY;
 
--- Disable strict blocking so all CRUD operations succeed from client API
+-- Permissive policies for client CRUD operations
 DROP POLICY IF EXISTS "Allow all profiles" ON profiles;
 CREATE POLICY "Allow all profiles" ON profiles FOR ALL USING (true) WITH CHECK (true);
 
