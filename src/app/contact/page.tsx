@@ -31,7 +31,7 @@ const CONTACT_INFO = [
     icon: MapPin,
     title: "Visit Us",
     lines: ["123 Community Way", "Springfield, IL 62704"],
-    href: "https://maps.app.goo.gl/jncMLa6U4VD3vmzH6",
+    href: "https://maps.app.goo.gl/V3KyUaBe71stUVxn6",
     isExternal: true
   },
   {
@@ -291,6 +291,29 @@ export default function ContactPage() {
               </div>
             </div>
           </Container>
+        </section>
+
+        {/* Live Location Map */}
+        <section className="w-full h-[400px] mt-12 relative border-y border-sand-200 overflow-hidden shadow-inner bg-sand-200">
+          <div className="absolute inset-0 z-10 pointer-events-none bg-emerald-950/5 mix-blend-multiply" />
+          <iframe
+            src="https://maps.google.com/maps?q=ICC+Haseen+Academy,+Erumamunda,+Nilambur&t=&z=15&ie=UTF8&iwloc=&output=embed"
+            width="100%"
+            height="100%"
+            style={{ border: 0 }}
+            allowFullScreen={true}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title="ICC Live Location"
+            className="w-full h-full object-cover filter contrast-125 saturate-50"
+          ></iframe>
+          
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
+            <div className="bg-white/90 backdrop-blur-md px-6 py-3 rounded-full shadow-2xl border border-sand-200 flex items-center gap-3">
+              <MapPin className="h-5 w-5 text-emerald-600" />
+              <span className="font-bold text-sand-900 text-sm">Find us at Springfield</span>
+            </div>
+          </div>
         </section>
       </main>
       <Footer />
