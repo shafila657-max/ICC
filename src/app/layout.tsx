@@ -13,11 +13,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Islamic Charity Center | Education, Relief & Community",
+  title: "Islamic Cultural Centre (ICC) | Education, Relief & Community",
   description:
     "Empowering lives through Islamic education, charitable giving, and community development. Join the ICC in making a difference through Quranic studies, youth programs, and community relief.",
   keywords:
     "Islamic charity, community center, Quran, education, donations, zakat, sadaqah",
+  icons: {
+    icon: [
+      { url: "/logo.png" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
