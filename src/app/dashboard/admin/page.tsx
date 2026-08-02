@@ -25,6 +25,7 @@ import {
   ExternalLink,
   UserCheck,
   XCircle,
+  MessageCircle,
 } from "lucide-react";
 import {
   Card,
@@ -72,7 +73,8 @@ import {
   updateSetting,
   updateDonationStatus,
 } from "@/lib/supabase/api";
-import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole, Program, FoodRate } from "@/lib/types";
+import type { FoodRate } from "@/lib/supabase/api";
+import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole, Program } from "@/lib/types";
 
 /* ===== Mock Fallback Users ===== */
 const MOCK_USERS: Profile[] = [
@@ -1341,7 +1343,7 @@ function AdminDashboardContent() {
                           disabled={!isEditingSettings}
                         />
                         {isEditingSettings ? (
-                          <Button size="sm" variant="success" onClick={handleSaveSettings} disabled={isSubmitting}>
+                          <Button size="sm" variant="primary" onClick={handleSaveSettings} disabled={isSubmitting}>
                             <CheckCircle2 className="h-4 w-4" /> Save
                           </Button>
                         ) : (
@@ -1888,8 +1890,8 @@ function AdminDashboardContent() {
             value={frSortOrder}
             onChange={(e) => setFrSortOrder(e.target.value)}
             required
-            helpText="Determines the order it appears in the table (1 = top)"
           />
+          <p className="text-xs text-sand-400 -mt-2">Determines the order it appears in the table (1 = top)</p>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Saving..." : editingFoodRate ? "Update Food Rate" : "Create Food Rate"}
           </Button>
