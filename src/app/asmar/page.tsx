@@ -54,9 +54,11 @@ export default async function ASMARPage() {
         {/* ASMAR Hero Banner */}
         <section className="relative bg-sand-950 text-white pt-32 pb-24 overflow-hidden">
           {/* Cover Image Background */}
-          <div className="absolute inset-0 z-0">
-            <img src="/asmar-cover.jpg" alt="ASMAR Cover" className="w-full h-full object-cover opacity-40 mix-blend-overlay" />
-            <div className="absolute inset-0 bg-gradient-to-br from-sand-950/95 via-emerald-950/80 to-sand-950/90" />
+          <div className="absolute inset-0 z-0 bg-sand-950">
+            <img src="/asmar-cover.jpg" alt="ASMAR Cover" className="w-full h-full object-cover object-right opacity-80" />
+            <div className="absolute inset-0 bg-gradient-to-r from-sand-950 via-emerald-950/90 to-transparent" />
+            {/* Subtle overlay to ensure right-side elements (Stats) remain legible */}
+            <div className="absolute inset-0 bg-sand-950/20" />
           </div>
 
           <Container className="relative z-10">
