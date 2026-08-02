@@ -75,6 +75,7 @@ import {
 } from "@/lib/supabase/api";
 import type { FoodRate } from "@/lib/supabase/api";
 import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole, Program } from "@/lib/types";
+import DonationReceipt, { type ReceiptData } from "@/components/ui/DonationReceipt";
 
 /* ===== Mock Fallback Users ===== */
 const MOCK_USERS: Profile[] = [
@@ -147,6 +148,9 @@ function AdminDashboardContent() {
   const [isEditingSettings, setIsEditingSettings] = useState(false);
   const [showFoodRateModal, setShowFoodRateModal] = useState(false);
   const [editingFoodRate, setEditingFoodRate] = useState<FoodRate | null>(null);
+
+  // Receipt State
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   
   const [frItemName, setFrItemName] = useState("");
   const [frPerChildCost, setFrPerChildCost] = useState("");
@@ -528,6 +532,19 @@ function AdminDashboardContent() {
       triggerFeedback("error", error || "Failed to verify donation.");
     }
     setIsSubmitting(false);
+  };
+
+  const handleOpenReceipt = (d: Donation) => {
+    setReceiptData({
+      donorName: d.is_anonymous ? "Anonymous Donor" : d.donor_name,
+      donorPhone: d.donor_phone,
+      amount: d.amount,
+      fund: d.message?.match(/\[Fund: ([^\]]+)\]/)?.[1] || d.category,
+      category: d.category,
+      message: d.message?.replace(/\[Fund:.*?\]\s*/, "") || undefined,
+      date: new Date(d.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }),
+      receiptId: d.id.slice(0, 8).toUpperCase(),
+    });
   };
 
   /* =============================================
@@ -1266,11 +1283,7 @@ function AdminDashboardContent() {
                 </tr>
               </thead>
               <tbody>
-                {donationsList.map((d) => {
-                  const receiptText = `✅ *ICC Donation Receipt*\n\n🕌 *Organization:* ICC\n📋 *Fund:* ${d.category}\n💰 *Amount:* ₹${d.amount.toLocaleString()}\n📅 *Date:* ${new Date(d.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}${d.donor_name ? `\n👤 *Donor:* ${d.donor_name}` : ""}${d.message ? `\n📜 *Note:* ${d.message}` : ""}\n\n_JazakAllah Khair for your generous contribution!_\n_May Allah accept your charity and multiply your reward._\n\n🌐 icc-zeta.vercel.app`;
-                  const whatsappUrl = `https://wa.me/${d.donor_phone ? d.donor_phone.replace(/[^0-9]/g, "") : ""}?text=${encodeURIComponent(receiptText)}`;
-                  
-                  return (
+                {donationsList.map((d) => (
                   <tr key={d.id} className="border-b border-sand-50 hover:bg-sand-50/50">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
@@ -1303,18 +1316,16 @@ function AdminDashboardContent() {
                             Verify
                           </button>
                         )}
-                        <a
-                          href={whatsappUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold transition-all ${d.status === "verified" && d.donor_phone ? "bg-green-600 text-white hover:bg-green-700" : "bg-sand-200 text-sand-400 pointer-events-none"}`}
+                        <button
+                          onClick={() => handleOpenReceipt(d)}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold transition-all ${d.status === "verified" ? "bg-green-600 text-white hover:bg-green-700" : "bg-sand-200 text-sand-500 hover:bg-sand-300"}`}
                         >
-                          <MessageCircle className="h-3 w-3" /> Send
-                        </a>
+                          <MessageCircle className="h-3 w-3" /> Receipt
+                        </button>
                       </div>
                     </td>
                   </tr>
-                )})}
+                ))}
               </tbody>
             </table>
           </div>
@@ -1897,6 +1908,13 @@ function AdminDashboardContent() {
           </Button>
         </form>
       </Modal>
+      {/* Donation Receipt Modal */}
+      {receiptData && (
+        <DonationReceipt
+          data={receiptData}
+          onClose={() => setReceiptData(null)}
+        />
+      )}
     </div>
   );
 }
