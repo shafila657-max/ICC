@@ -12,6 +12,9 @@ import {
   Sun,
   Scroll,
   BookOpen,
+  Smartphone,
+  CreditCard,
+  QrCode,
 } from "lucide-react";
 import {
   Container,
@@ -26,6 +29,9 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import { DONATION_PRESETS } from "@/lib/constants";
 import { recordDonation } from "@/lib/supabase/api";
+
+const UPI_ID = "fcbizmdakhw@freecharge";
+const UPI_PAYEE_NAME = "ICC Haseen Academy";
 
 const DONATION_CARDS = [
   {
@@ -107,6 +113,7 @@ export default function Donations() {
   const [duaNote, setDuaNote] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
+  const [paymentTab, setPaymentTab] = useState<"form" | "qr">("form");
 
   const activeAmount = selectedAmount || Number(customAmount) || 0;
 
@@ -301,107 +308,201 @@ export default function Donations() {
               <p className="text-xs text-sand-600 leading-relaxed">{selectedCard.description}</p>
             </div>
 
-            {/* Amount Selection */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-sand-700 mb-2">
-                Select Amount
-              </label>
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                {DONATION_PRESETS.map((amount) => (
-                  <button
-                    key={amount}
-                    type="button"
-                    onClick={() => {
-                      setSelectedAmount(amount);
-                      setCustomAmount("");
-                    }}
-                    className={`py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
-                      selectedAmount === amount
-                        ? "bg-emerald-700 text-white shadow-md"
-                        : "bg-sand-100 text-sand-700 hover:bg-sand-200"
-                    }`}
-                  >
-                    ${amount}
-                  </button>
-                ))}
-              </div>
-              <Input
-                placeholder="Or enter custom amount ($)"
-                type="number"
-                value={customAmount}
-                onChange={(e) => {
-                  setCustomAmount(e.target.value);
-                  setSelectedAmount(null);
-                }}
-              />
+            {/* Payment Method Tabs */}
+            <div className="flex gap-2 p-1 bg-sand-100 rounded-xl">
+              <button
+                onClick={() => setPaymentTab("form")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                  paymentTab === "form"
+                    ? "bg-white text-emerald-700 shadow-sm"
+                    : "text-sand-500 hover:text-sand-700"
+                }`}
+              >
+                <CreditCard className="h-4 w-4" /> Online Form
+              </button>
+              <button
+                onClick={() => setPaymentTab("qr")}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                  paymentTab === "qr"
+                    ? "bg-white text-emerald-700 shadow-sm"
+                    : "text-sand-500 hover:text-sand-700"
+                }`}
+              >
+                <Smartphone className="h-4 w-4" /> GPay / UPI
+              </button>
             </div>
 
-            {/* Donor Information */}
-            <div className="grid sm:grid-cols-2 gap-3">
-              <Input
-                label="Your Name"
-                placeholder="Full Name"
-                value={donorName}
-                onChange={(e) => setDonorName(e.target.value)}
-                disabled={isAnonymous}
-              />
-              <Input
-                label="Email Address"
-                type="email"
-                placeholder="you@example.com"
-                value={donorEmail}
-                onChange={(e) => setDonorEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            {/* Special Note / Dua Request (Wasiyya / Intention) */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-sand-700 mb-1 flex items-center gap-1.5">
-                <Scroll className="h-4 w-4 text-gold-600" />
-                Special Note / Dua Request (Wasiyya & Intention)
-              </label>
-              <Textarea
-                placeholder="Write any special dua request, names of deceased loved ones to be remembered, or specific intentions for this gift..."
-                rows={3}
-                value={duaNote}
-                onChange={(e) => setDuaNote(e.target.value)}
-              />
-            </div>
-
-            <label className="flex items-center gap-2 text-xs text-sand-600 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isAnonymous}
-                onChange={(e) => setIsAnonymous(e.target.checked)}
-                className="rounded border-sand-300 text-emerald-600 focus:ring-emerald-500"
-              />
-              Make this donation anonymous
-            </label>
-
-            {/* Summary */}
-            {activeAmount > 0 && (
-              <div className="bg-emerald-50 rounded-xl p-3.5 border border-emerald-200 flex justify-between items-center">
-                <div>
-                  <span className="text-sand-600 text-xs font-medium">Total Contribution</span>
-                  <p className="text-xs text-emerald-800 font-bold">{selectedCard.title}</p>
+            {paymentTab === "qr" ? (
+              /* ===== GPay / UPI QR Code Tab ===== */
+              <div className="space-y-4">
+                <div className="text-center p-6 bg-white rounded-2xl border-2 border-dashed border-emerald-200">
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-full mb-4">
+                    <QrCode className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-emerald-700">Scan to Pay via GPay / PhonePe / Paytm</span>
+                  </div>
+                  <div className="mx-auto w-56 h-56 bg-white rounded-2xl shadow-lg border border-sand-200 p-3 mb-4">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+                        `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_PAYEE_NAME)}&cu=INR${activeAmount > 0 ? `&am=${activeAmount}` : ''}`
+                      )}`}
+                      alt="UPI Payment QR Code"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  <p className="text-sm font-bold text-sand-900 mb-1">ICC Haseen Academy</p>
+                  <p className="text-xs text-sand-500 font-mono bg-sand-50 inline-block px-3 py-1 rounded-lg">{UPI_ID}</p>
+                  {activeAmount > 0 && (
+                    <div className="mt-4 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                      <span className="text-xs text-sand-600">Amount: </span>
+                      <span className="text-lg font-extrabold text-emerald-800">₹{activeAmount}</span>
+                    </div>
+                  )}
                 </div>
-                <span className="text-2xl font-extrabold text-emerald-800">
-                  {formatCurrency(activeAmount)}
-                </span>
-              </div>
-            )}
 
-            <Button
-              className="w-full font-bold py-3.5"
-              size="lg"
-              variant="gold"
-              disabled={activeAmount <= 0 || status === "submitting"}
-              onClick={handleDonationSubmit}
-            >
-              <Heart className="h-5 w-5 mr-2" />
-              {status === "submitting" ? "Processing Contribution..." : `Complete Donation (${formatCurrency(activeAmount)})`}
-            </Button>
+                {/* Amount Quick Select for QR */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-sand-700 mb-2">
+                    Set Amount (Optional)
+                  </label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[100, 500, 1000, 5000].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => { setSelectedAmount(amt); setCustomAmount(""); }}
+                        className={`py-2 rounded-xl font-bold text-sm transition-all cursor-pointer ${
+                          selectedAmount === amt
+                            ? "bg-emerald-700 text-white shadow-md"
+                            : "bg-sand-100 text-sand-700 hover:bg-sand-200"
+                        }`}
+                      >
+                        ₹{amt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="text-center space-y-2">
+                  <div className="flex items-center justify-center gap-4 text-xs text-sand-400">
+                    <span className="h-px flex-1 bg-sand-200" />
+                    <span>or pay directly via app</span>
+                    <span className="h-px flex-1 bg-sand-200" />
+                  </div>
+                  <a
+                    href={`upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(UPI_PAYEE_NAME)}&cu=INR${activeAmount > 0 ? `&am=${activeAmount}` : ''}`}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-sm rounded-xl hover:shadow-lg transition-all"
+                  >
+                    <Smartphone className="h-5 w-5" />
+                    Open UPI App
+                  </a>
+                </div>
+              </div>
+            ) : (
+              /* ===== Online Form Tab ===== */
+              <>
+                {/* Amount Selection */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-sand-700 mb-2">
+                    Select Amount
+                  </label>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {DONATION_PRESETS.map((amount) => (
+                      <button
+                        key={amount}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAmount(amount);
+                          setCustomAmount("");
+                        }}
+                        className={`py-2.5 rounded-xl font-bold text-sm transition-all cursor-pointer ${
+                          selectedAmount === amount
+                            ? "bg-emerald-700 text-white shadow-md"
+                            : "bg-sand-100 text-sand-700 hover:bg-sand-200"
+                        }`}
+                      >
+                        ${amount}
+                      </button>
+                    ))}
+                  </div>
+                  <Input
+                    placeholder="Or enter custom amount ($)"
+                    type="number"
+                    value={customAmount}
+                    onChange={(e) => {
+                      setCustomAmount(e.target.value);
+                      setSelectedAmount(null);
+                    }}
+                  />
+                </div>
+
+                {/* Donor Information */}
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Input
+                    label="Your Name"
+                    placeholder="Full Name"
+                    value={donorName}
+                    onChange={(e) => setDonorName(e.target.value)}
+                    disabled={isAnonymous}
+                  />
+                  <Input
+                    label="Email Address"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={donorEmail}
+                    onChange={(e) => setDonorEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                {/* Special Note / Dua Request (Wasiyya / Intention) */}
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-sand-700 mb-1 flex items-center gap-1.5">
+                    <Scroll className="h-4 w-4 text-gold-600" />
+                    Special Note / Dua Request (Wasiyya & Intention)
+                  </label>
+                  <Textarea
+                    placeholder="Write any special dua request, names of deceased loved ones to be remembered, or specific intentions for this gift..."
+                    rows={3}
+                    value={duaNote}
+                    onChange={(e) => setDuaNote(e.target.value)}
+                  />
+                </div>
+
+                <label className="flex items-center gap-2 text-xs text-sand-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isAnonymous}
+                    onChange={(e) => setIsAnonymous(e.target.checked)}
+                    className="rounded border-sand-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  Make this donation anonymous
+                </label>
+
+                {/* Summary */}
+                {activeAmount > 0 && (
+                  <div className="bg-emerald-50 rounded-xl p-3.5 border border-emerald-200 flex justify-between items-center">
+                    <div>
+                      <span className="text-sand-600 text-xs font-medium">Total Contribution</span>
+                      <p className="text-xs text-emerald-800 font-bold">{selectedCard.title}</p>
+                    </div>
+                    <span className="text-2xl font-extrabold text-emerald-800">
+                      {formatCurrency(activeAmount)}
+                    </span>
+                  </div>
+                )}
+
+                <Button
+                  className="w-full font-bold py-3.5"
+                  size="lg"
+                  variant="gold"
+                  disabled={activeAmount <= 0 || status === "submitting"}
+                  onClick={handleDonationSubmit}
+                >
+                  <Heart className="h-5 w-5 mr-2" />
+                  {status === "submitting" ? "Processing Contribution..." : `Complete Donation (${formatCurrency(activeAmount)})`}
+                </Button>
+              </>
+            )}
           </div>
         )}
       </Modal>
