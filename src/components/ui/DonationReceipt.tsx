@@ -108,33 +108,33 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
         </div>
 
         {/* THE RECEIPT CARD - this is what gets captured */}
-        <div ref={cardRef} className="w-full bg-white rounded-3xl overflow-hidden shadow-2xl" style={{ fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+        <div ref={cardRef} className="w-full rounded-3xl overflow-hidden shadow-2xl" style={{ backgroundColor: "#ffffff", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
           {/* Header */}
           <div className="relative px-8 pt-8 pb-6 text-center overflow-hidden" style={{ background: "linear-gradient(135deg, #064e3b 0%, #065f46 40%, #047857 100%)" }}>
             <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 border-[20px] border-white" />
             <div className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full opacity-10 border-[20px] border-white" />
-            <p className="text-emerald-200 text-xs mb-2" style={{ direction: "rtl", fontFamily: "serif", letterSpacing: "0.05em" }}>بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</p>
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-white/20 border border-white/30 mb-3">
-              <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="white" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <p className="text-xs mb-2" style={{ color: "#a7f3d0", direction: "rtl", fontFamily: "serif", letterSpacing: "0.05em" }}>بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ</p>
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full border mb-3" style={{ backgroundColor: "rgba(255, 255, 255, 0.2)", borderColor: "rgba(255, 255, 255, 0.3)" }}>
+              <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none" stroke="#ffffff" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
-            <h2 className="text-white text-xl font-extrabold tracking-tight">ICC Donation Receipt</h2>
-            <p className="text-emerald-300 text-xs mt-1 font-medium">Islamic Cultural Centre</p>
-            <div className="mt-3 inline-block px-3 py-1 rounded-full bg-white/10 border border-white/20">
-              <p className="text-white/80 text-[10px] font-mono tracking-widest">#{data.receiptId}</p>
+            <h2 className="text-xl font-extrabold tracking-tight" style={{ color: "#ffffff" }}>ICC Donation Receipt</h2>
+            <p className="text-xs mt-1 font-medium" style={{ color: "#6ee7b7" }}>Islamic Cultural Centre</p>
+            <div className="mt-3 inline-block px-3 py-1 rounded-full border" style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", borderColor: "rgba(255, 255, 255, 0.2)" }}>
+              <p className="text-[10px] font-mono tracking-widest" style={{ color: "rgba(255, 255, 255, 0.8)" }}>#{data.receiptId}</p>
             </div>
           </div>
 
           {/* Gold divider */}
           <div className="flex items-center">
             <div className="flex-1 h-1" style={{ background: "linear-gradient(90deg, #d97706, #f59e0b)" }} />
-            <div className="px-3 py-1 bg-amber-500 text-white text-xs font-bold">✦</div>
+            <div className="px-3 py-1 text-xs font-bold" style={{ backgroundColor: "#f59e0b", color: "#ffffff" }}>✦</div>
             <div className="flex-1 h-1" style={{ background: "linear-gradient(90deg, #f59e0b, #d97706)" }} />
           </div>
 
           {/* Amount */}
-          <div className="px-8 py-5 text-center bg-gradient-to-b from-amber-50 to-white">
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-widest mb-1">Amount Donated</p>
-            <p className="font-extrabold" style={{ fontSize: "2.5rem", lineHeight: 1.1, background: "linear-gradient(135deg, #064e3b, #059669)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          <div className="px-8 py-5 text-center" style={{ background: "linear-gradient(to bottom, #fffbeb, #ffffff)" }}>
+            <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "#9ca3af" }}>Amount Donated</p>
+            <p className="font-extrabold" style={{ fontSize: "2.5rem", lineHeight: 1.1, color: "#047857" }}>
               {formattedAmount}
             </p>
           </div>
@@ -148,20 +148,20 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
               ...(data.donorPhone ? [{ label: "Contact", value: data.donorPhone, icon: "📱" }] : []),
               ...(data.message ? [{ label: "Note", value: data.message.replace(/\[Fund:.*?\]\s*/, ""), icon: "📜" }] : []),
             ].map((item, i, arr) => (
-              <div key={item.label} className={`flex items-center justify-between py-2.5 ${i < arr.length - 1 ? "border-b border-gray-100" : ""}`}>
+              <div key={item.label} className="flex items-center justify-between py-2.5" style={{ borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none" }}>
                 <div className="flex items-center gap-2">
                   <span className="text-sm">{item.icon}</span>
-                  <span className="text-gray-400 text-xs font-medium">{item.label}</span>
+                  <span className="text-xs font-medium" style={{ color: "#9ca3af" }}>{item.label}</span>
                 </div>
-                <span className="text-gray-900 text-xs font-bold text-right max-w-[55%] truncate">{item.value}</span>
+                <span className="text-xs font-bold text-right max-w-[55%] truncate" style={{ color: "#111827" }}>{item.value}</span>
               </div>
             ))}
           </div>
 
           {/* Dua */}
           <div className="mx-6 mb-5 p-4 rounded-2xl text-center" style={{ background: "linear-gradient(135deg, #f0fdf4, #dcfce7)", border: "1px solid #bbf7d0" }}>
-            <p className="text-emerald-800 text-[11px] font-bold mb-1">📿 Dua for the Donor</p>
-            <p className="text-emerald-700 text-[10px] italic leading-relaxed">
+            <p className="text-[11px] font-bold mb-1" style={{ color: "#065f46" }}>📿 Dua for the Donor</p>
+            <p className="text-[10px] italic leading-relaxed" style={{ color: "#047857" }}>
               "JazakAllah Khair for your generous contribution.<br/>
               May Allah accept your charity, multiply your reward,<br/>
               and bless your wealth and family. Ameen."
@@ -170,8 +170,8 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
 
           {/* Footer */}
           <div className="px-8 py-4 text-center" style={{ background: "linear-gradient(135deg, #064e3b, #065f46)" }}>
-            <p className="text-emerald-300 text-[10px] font-medium">🌐 icc-zeta.vercel.app &nbsp;•&nbsp; 📞 9447 351 872</p>
-            <p className="text-white/40 text-[9px] mt-1">Official receipt issued by ICC © {year}</p>
+            <p className="text-[10px] font-medium" style={{ color: "#6ee7b7" }}>🌐 icc-zeta.vercel.app &nbsp;•&nbsp; 📞 9447 351 872</p>
+            <p className="text-[9px] mt-1" style={{ color: "rgba(255, 255, 255, 0.4)" }}>Official receipt issued by ICC © {year}</p>
           </div>
         </div>
 
