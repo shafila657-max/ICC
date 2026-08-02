@@ -294,6 +294,17 @@ export async function recordDonation(donation: Partial<Donation>): Promise<{ suc
   }
 }
 
+export async function updateDonationStatus(id: string, status: "pending" | "verified"): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase.from("donations").update({ status }).eq("id", id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to update donation status" };
+  }
+}
+
 /** Submit event RSVP registration */
 export async function submitEventRSVP(rsvp: { event_id: string; name: string; email: string }): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };

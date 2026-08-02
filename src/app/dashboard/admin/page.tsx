@@ -70,6 +70,7 @@ import {
   deleteFoodRate,
   fetchSetting,
   updateSetting,
+  updateDonationStatus,
 } from "@/lib/supabase/api";
 import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole, Program, FoodRate } from "@/lib/types";
 
@@ -509,6 +510,22 @@ function AdminDashboardContent() {
     } else {
       triggerFeedback("error", result.error || "Failed to delete event");
     }
+  };
+
+  /* =============================================
+   * DONATION VERIFICATION HANDLERS
+   * ============================================= */
+
+  const handleVerifyDonation = async (id: string) => {
+    setIsSubmitting(true);
+    const { success, error } = await updateDonationStatus(id, "verified");
+    if (success) {
+      triggerFeedback("success", "Donation verified successfully.");
+      await refreshAllData();
+    } else {
+      triggerFeedback("error", error || "Failed to verify donation.");
+    }
+    setIsSubmitting(false);
   };
 
   /* =============================================
@@ -1239,13 +1256,19 @@ function AdminDashboardContent() {
               <thead>
                 <tr className="border-b border-sand-100">
                   <th className="text-left px-6 py-3 text-sand-500 font-medium">Donor</th>
+                  <th className="text-left px-6 py-3 text-sand-500 font-medium">Contact</th>
                   <th className="text-left px-6 py-3 text-sand-500 font-medium">Amount</th>
-                  <th className="text-left px-6 py-3 text-sand-500 font-medium hidden md:table-cell">Category</th>
                   <th className="text-left px-6 py-3 text-sand-500 font-medium hidden lg:table-cell">Date</th>
+                  <th className="text-center px-6 py-3 text-sand-500 font-medium">Status</th>
+                  <th className="text-center px-6 py-3 text-sand-500 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {donationsList.map((d) => (
+                {donationsList.map((d) => {
+                  const receiptText = `✅ *ICC Donation Receipt*\n\n🕌 *Organization:* ICC\n📋 *Fund:* ${d.category}\n💰 *Amount:* ₹${d.amount.toLocaleString()}\n📅 *Date:* ${new Date(d.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}${d.donor_name ? `\n👤 *Donor:* ${d.donor_name}` : ""}${d.message ? `\n📜 *Note:* ${d.message}` : ""}\n\n_JazakAllah Khair for your generous contribution!_\n_May Allah accept your charity and multiply your reward._\n\n🌐 icc-zeta.vercel.app`;
+                  const whatsappUrl = `https://wa.me/${d.donor_phone ? d.donor_phone.replace(/[^0-9]/g, "") : ""}?text=${encodeURIComponent(receiptText)}`;
+                  
+                  return (
                   <tr key={d.id} className="border-b border-sand-50 hover:bg-sand-50/50">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-2">
@@ -1255,13 +1278,41 @@ function AdminDashboardContent() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-3 font-semibold text-emerald-600">{formatCurrency(d.amount)}</td>
-                    <td className="px-6 py-3 hidden md:table-cell">
-                      <Badge variant="gold">{d.category}</Badge>
+                    <td className="px-6 py-3 text-sand-600 font-mono text-xs">
+                      {d.donor_phone || d.donor_email}
                     </td>
+                    <td className="px-6 py-3 font-semibold text-emerald-600">{formatCurrency(d.amount)}</td>
                     <td className="px-6 py-3 hidden lg:table-cell text-sand-500">{formatDate(d.created_at)}</td>
+                    <td className="px-6 py-3 text-center">
+                      {d.status === "verified" ? (
+                        <Badge variant="success">Verified</Badge>
+                      ) : (
+                        <Badge variant="gold">Pending</Badge>
+                      )}
+                    </td>
+                    <td className="px-6 py-3 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        {d.status !== "verified" && (
+                          <button
+                            onClick={() => handleVerifyDonation(d.id)}
+                            disabled={isSubmitting}
+                            className="px-2 py-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded text-xs font-bold transition-colors disabled:opacity-50"
+                          >
+                            Verify
+                          </button>
+                        )}
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-bold transition-all ${d.status === "verified" && d.donor_phone ? "bg-green-600 text-white hover:bg-green-700" : "bg-sand-200 text-sand-400 pointer-events-none"}`}
+                        >
+                          <MessageCircle className="h-3 w-3" /> Send
+                        </a>
+                      </div>
+                    </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>

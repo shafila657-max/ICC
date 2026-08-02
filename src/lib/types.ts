@@ -66,10 +66,12 @@ export interface Donation {
   id: string;
   donor_name: string;
   donor_email: string;
+  donor_phone?: string;
   amount: number;
-  category: "zakat" | "sadaqah" | "fitrah" | "general";
+  category: "zakat" | "sadaqah" | "fitrah" | "general" | string;
   message?: string;
   is_anonymous: boolean;
+  status?: "pending" | "verified";
   created_at: string;
 }
 
