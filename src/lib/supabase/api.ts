@@ -70,19 +70,20 @@ export async function uploadImageToSupabase(
 
 /** Fetch active programs */
 export async function fetchPrograms(orgId = "icc"): Promise<Program[]> {
-  if (!isSupabaseConfigured()) return PROGRAMS;
+  if (!isSupabaseConfigured()) return (orgId === "icc" || orgId === "all") ? PROGRAMS : [];
   try {
     let query = supabase.from("programs").select("*").order("created_at", { ascending: false });
     if (orgId !== "all") query = query.eq("organization_id", orgId);
     const { data, error } = await query;
     if (error) {
       console.warn("fetchPrograms Supabase error:", error.message);
-      return PROGRAMS;
+      return (orgId === "icc" || orgId === "all") ? PROGRAMS : [];
     }
-    return data && data.length > 0 ? (data as Program[]) : PROGRAMS;
+    if (data && data.length > 0) return data as Program[];
+    return (orgId === "icc" || orgId === "all") ? PROGRAMS : [];
   } catch (err) {
     console.warn("fetchPrograms exception:", err);
-    return PROGRAMS;
+    return (orgId === "icc" || orgId === "all") ? PROGRAMS : [];
   }
 }
 
@@ -108,19 +109,20 @@ export async function fetchProgramById(id: string): Promise<Program | null> {
 
 /** Fetch upcoming events */
 export async function fetchEvents(orgId = "icc"): Promise<EventItem[]> {
-  if (!isSupabaseConfigured()) return EVENTS;
+  if (!isSupabaseConfigured()) return (orgId === "icc" || orgId === "all") ? EVENTS : [];
   try {
     let query = supabase.from("events").select("*").order("date", { ascending: true });
     if (orgId !== "all") query = query.eq("organization_id", orgId);
     const { data, error } = await query;
     if (error) {
       console.warn("fetchEvents Supabase error:", error.message);
-      return EVENTS;
+      return (orgId === "icc" || orgId === "all") ? EVENTS : [];
     }
-    return data && data.length > 0 ? (data as EventItem[]) : EVENTS;
+    if (data && data.length > 0) return data as EventItem[];
+    return (orgId === "icc" || orgId === "all") ? EVENTS : [];
   } catch (err) {
     console.warn("fetchEvents exception:", err);
-    return EVENTS;
+    return (orgId === "icc" || orgId === "all") ? EVENTS : [];
   }
 }
 
@@ -142,19 +144,20 @@ export async function fetchTestimonials(): Promise<Testimonial[]> {
 
 /** Fetch gallery items */
 export async function fetchGalleryItems(orgId = "icc"): Promise<GalleryItem[]> {
-  if (!isSupabaseConfigured()) return GALLERY_ITEMS;
+  if (!isSupabaseConfigured()) return (orgId === "icc" || orgId === "all") ? GALLERY_ITEMS : [];
   try {
     let query = supabase.from("gallery_items").select("*").order("created_at", { ascending: false });
     if (orgId !== "all") query = query.eq("organization_id", orgId);
     const { data, error } = await query;
     if (error) {
       console.warn("fetchGalleryItems Supabase error:", error.message);
-      return GALLERY_ITEMS;
+      return (orgId === "icc" || orgId === "all") ? GALLERY_ITEMS : [];
     }
-    return data && data.length > 0 ? (data as GalleryItem[]) : GALLERY_ITEMS;
+    if (data && data.length > 0) return data as GalleryItem[];
+    return (orgId === "icc" || orgId === "all") ? GALLERY_ITEMS : [];
   } catch (err) {
     console.warn("fetchGalleryItems exception:", err);
-    return GALLERY_ITEMS;
+    return (orgId === "icc" || orgId === "all") ? GALLERY_ITEMS : [];
   }
 }
 
@@ -177,6 +180,7 @@ export async function fetchCourses(): Promise<Course[]> {
 /** Fetch published announcements for specific target role */
 export async function fetchAnnouncements(role: UserRole | "all" = "all", orgId = "icc"): Promise<Announcement[]> {
   if (!isSupabaseConfigured()) {
+    if (orgId !== "icc" && orgId !== "all") return [];
     return ANNOUNCEMENTS.filter(
       (a) => a.target_role === "all" || a.target_role === role
     ) as Announcement[];
@@ -187,6 +191,7 @@ export async function fetchAnnouncements(role: UserRole | "all" = "all", orgId =
     const { data, error } = await query;
 
     if (error || !data || data.length === 0) {
+      if (orgId !== "icc" && orgId !== "all") return [];
       return ANNOUNCEMENTS.filter(
         (a) => a.target_role === "all" || a.target_role === role
       ) as Announcement[];
@@ -196,6 +201,7 @@ export async function fetchAnnouncements(role: UserRole | "all" = "all", orgId =
     ) as Announcement[];
   } catch (err) {
     console.warn("fetchAnnouncements exception:", err);
+    if (orgId !== "icc" && orgId !== "all") return [];
     return ANNOUNCEMENTS as Announcement[];
   }
 }

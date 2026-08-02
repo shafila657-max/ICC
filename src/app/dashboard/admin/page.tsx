@@ -176,19 +176,19 @@ function AdminDashboardContent() {
     }
 
     const dbAnn = await fetchAnnouncements("admin", org);
-    if (dbAnn.length > 0) setAnnouncementsList(dbAnn);
+    setAnnouncementsList(dbAnn);
 
     const dbEvents = await fetchEvents(org);
-    if (dbEvents.length > 0) setEventsList(dbEvents);
+    setEventsList(dbEvents);
 
     const dbGallery = await fetchGalleryItems(org);
-    if (dbGallery.length > 0) setGalleryList(dbGallery);
+    setGalleryList(dbGallery);
 
     const dbDonations = await fetchDonations();
     if (dbDonations.length > 0) setDonationsList(dbDonations);
 
     const dbPrograms = await fetchPrograms(org);
-    if (dbPrograms.length > 0) setProgramsList(dbPrograms);
+    setProgramsList(dbPrograms);
   };
 
   useEffect(() => {
