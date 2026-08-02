@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS programs (
   category program_category NOT NULL DEFAULT 'education',
   image_url TEXT,
   is_active BOOLEAN DEFAULT true,
+  organization_id TEXT NOT NULL DEFAULT 'icc',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -62,6 +63,7 @@ CREATE TABLE IF NOT EXISTS events (
   image_url TEXT,
   is_featured BOOLEAN DEFAULT false,
   max_attendees INT,
+  organization_id TEXT NOT NULL DEFAULT 'icc',
   created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -74,6 +76,7 @@ CREATE TABLE IF NOT EXISTS announcements (
   priority announcement_priority DEFAULT 'low',
   target_role TEXT DEFAULT 'all',
   is_published BOOLEAN DEFAULT true,
+  organization_id TEXT NOT NULL DEFAULT 'icc',
   author_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -97,6 +100,7 @@ CREATE TABLE IF NOT EXISTS gallery_items (
   image_url TEXT NOT NULL,
   category TEXT DEFAULT 'Events',
   description TEXT,
+  organization_id TEXT NOT NULL DEFAULT 'icc',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
