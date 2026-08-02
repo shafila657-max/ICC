@@ -143,13 +143,24 @@ export default function Donations() {
     if (activeAmount <= 0) return;
     setStatus("submitting");
 
-    await recordDonation({
+    // Map card IDs to valid DB enum values (zakat | sadaqah | fitrah | general)
+    const categoryMap: Record<string, "zakat" | "sadaqah" | "fitrah" | "general"> = {
+      zakat: "zakat",
+      sadaqah: "sadaqah",
+      fitrah: "fitrah",
+      general: "general",
+    };
+    const category = categoryMap[selectedCard.id] ?? "general";
+
+    const result = await recordDonation({
       donor_name: donorName || "Supporter",
       donor_email: donorEmail || "donor@example.com",
       donor_phone: donorPhone || undefined,
       amount: activeAmount,
-      category: selectedCard.id as any,
-      message: duaNote ? `[Dua/Wasiyya]: ${duaNote}` : undefined,
+      category,
+      message: duaNote
+        ? `[Fund: ${selectedCard.title}] [Dua/Wasiyya]: ${duaNote}`
+        : `[Fund: ${selectedCard.title}]`,
       is_anonymous: isAnonymous,
       status: "pending",
     });
