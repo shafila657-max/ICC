@@ -86,20 +86,25 @@ const ROLE_BADGE: Record<string, "success" | "info" | "warning" | "gold"> = {
 function AdminDashboardContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
-  const orgParam = (searchParams.get("org") || "icc") as "icc" | "acsa" | "asmar";
 
-  const [activeTab, setActiveTab] = useState<"overview" | "onboarding" | "programs" | "users" | "announcements" | "events" | "gallery" | "donations">(
+  const [activeTab, setActiveTab] = useState<"overview" | "onboarding" | "programs" | "users" | "announcements" | "events" | "gallery" | "donations" | "acsa" | "asmar">(
     (tabParam as any) || "overview"
   );
   
-  const [activeOrg, setActiveOrg] = useState<"icc" | "acsa" | "asmar">(orgParam);
+  const [activeOrg, setActiveOrg] = useState<"icc" | "acsa" | "asmar">("icc");
+  const [subTab, setSubTab] = useState("overview");
 
   useEffect(() => {
-    if (tabParam && ["overview", "onboarding", "programs", "users", "announcements", "events", "gallery", "donations"].includes(tabParam)) {
+    if (tabParam && ["overview", "onboarding", "programs", "users", "announcements", "events", "gallery", "donations", "acsa", "asmar"].includes(tabParam)) {
       setActiveTab(tabParam as any);
+      if (tabParam === "acsa" || tabParam === "asmar") {
+        setActiveOrg(tabParam);
+        setSubTab("overview");
+      } else {
+        setActiveOrg("icc");
+      }
     }
-    if (orgParam) setActiveOrg(orgParam as any);
-  }, [tabParam, orgParam]);
+  }, [tabParam]);
 
   // Create Modals
   const [showUserModal, setShowUserModal] = useState(false);
@@ -545,8 +550,10 @@ function AdminDashboardContent() {
       u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const viewTab = (activeTab === "acsa" || activeTab === "asmar") ? subTab : activeTab;
+
   return (
-    <div className="space-y-8">
+    <div className="max-w-7xl mx-auto space-y-6">
       {/* Feedback Banner */}
       {actionFeedback && (
         <div
@@ -572,8 +579,36 @@ function AdminDashboardContent() {
 
       {/* Horizontal Tabs Removed - Using Sidebar Navigation */}
 
+      {/* Sub-Navigation for Sister Organizations */}
+      {(activeTab === "acsa" || activeTab === "asmar") && (
+        <div className="mb-6 border-b border-sand-200">
+          <div className="flex items-center gap-1 overflow-x-auto pb-2">
+            {[
+              { id: "overview", label: "Overview", icon: Home },
+              { id: "programs", label: "Programs", icon: GraduationCap },
+              { id: "events", label: "Events", icon: Calendar },
+              { id: "gallery", label: "Gallery", icon: ImageIcon },
+              { id: "announcements", label: "Announcements", icon: Megaphone },
+            ].map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setSubTab(t.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${
+                  subTab === t.id
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "text-sand-600 hover:bg-sand-100"
+                }`}
+              >
+                <t.icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Overview Tab */}
-      {activeTab === "overview" && (
+      {viewTab === "overview" && (
         <div className="space-y-6">
           {/* Stats Grid Header */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -679,7 +714,7 @@ function AdminDashboardContent() {
       )}
 
       {/* Onboarding Approvals Tab */}
-      {activeTab === "onboarding" && (
+      {viewTab === "onboarding" && (
         <Card id="onboarding">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -756,7 +791,7 @@ function AdminDashboardContent() {
       )}
 
       {/* Program Builder Tab */}
-      {activeTab === "programs" && (
+      {viewTab === "programs" && (
         <Card id="programs">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -814,7 +849,7 @@ function AdminDashboardContent() {
       )}
 
       {/* Users Tab */}
-      {activeTab === "users" && (
+      {viewTab === "users" && (
         <Card id="users">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
             <h3 className="text-lg font-bold text-sand-900">User Management</h3>
@@ -899,7 +934,7 @@ function AdminDashboardContent() {
       )}
 
       {/* Announcements Tab */}
-      {activeTab === "announcements" && (
+      {viewTab === "announcements" && (
         <Card id="announcements">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-sand-900">Announcements</h3>
@@ -949,7 +984,7 @@ function AdminDashboardContent() {
       )}
 
       {/* Events Tab */}
-      {activeTab === "events" && (
+      {viewTab === "events" && (
         <Card id="events">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-sand-900">Event Management</h3>
@@ -997,7 +1032,7 @@ function AdminDashboardContent() {
       )}
 
       {/* Gallery Tab */}
-      {activeTab === "gallery" && (
+      {viewTab === "gallery" && (
         <Card id="gallery">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -1037,7 +1072,7 @@ function AdminDashboardContent() {
       )}
 
       {/* Donations Tab */}
-      {activeTab === "donations" && (
+      {viewTab === "donations" && (
         <Card id="donations">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-bold text-sand-900">Donation Analytics</h3>
