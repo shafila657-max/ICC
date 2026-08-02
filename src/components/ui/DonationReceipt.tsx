@@ -98,11 +98,21 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-      <div className="w-full max-w-md flex flex-col gap-4 my-4">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md flex flex-col gap-4 my-4 cursor-default"
+      >
         <div className="flex items-center justify-between">
           <p className="text-white/80 text-sm font-medium">Donation Receipt Preview</p>
-          <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1 text-white/60 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+            title="Close"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -203,7 +213,7 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
           <button
             onClick={generatePDF}
             disabled={loading !== null}
-            className="flex items-center justify-center gap-1.5 px-3 py-3 bg-white text-emerald-800 font-bold rounded-2xl shadow-lg hover:bg-emerald-50 transition-all disabled:opacity-60 text-xs"
+            className="flex items-center justify-center gap-1.5 px-3 py-3 bg-white text-emerald-800 font-bold rounded-2xl shadow-lg hover:bg-emerald-50 transition-all disabled:opacity-60 text-xs cursor-pointer"
           >
             {loading === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             PDF Card
@@ -211,22 +221,31 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
           <button
             onClick={downloadImage}
             disabled={loading !== null}
-            className="flex items-center justify-center gap-1.5 px-3 py-3 bg-emerald-100 text-emerald-900 font-bold rounded-2xl shadow-lg hover:bg-emerald-200 transition-all disabled:opacity-60 text-xs"
+            className="flex items-center justify-center gap-1.5 px-3 py-3 bg-emerald-100 text-emerald-900 font-bold rounded-2xl shadow-lg hover:bg-emerald-200 transition-all disabled:opacity-60 text-xs cursor-pointer"
           >
             {loading === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Image Card
           </button>
           <button
             onClick={shareImage}
-            className="flex items-center justify-center gap-1.5 px-3 py-3 bg-green-600 text-white font-bold rounded-2xl shadow-lg hover:bg-green-700 transition-all text-xs"
+            className="flex items-center justify-center gap-1.5 px-3 py-3 bg-green-600 text-white font-bold rounded-2xl shadow-lg hover:bg-green-700 transition-all text-xs cursor-pointer"
           >
             <MessageCircle className="h-4 w-4" />
             WhatsApp
           </button>
         </div>
-        <p className="text-white/50 text-center text-[10px]">
-          Click <strong>WhatsApp</strong> to chat, or download the <strong>PDF/Image Card</strong> to attach
-        </p>
+
+        <div className="flex items-center justify-between text-xs pt-1">
+          <p className="text-white/50 text-[10px]">
+            Click outside to close
+          </p>
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white underline text-xs font-medium cursor-pointer"
+          >
+            Close Window ✖
+          </button>
+        </div>
       </div>
     </div>
   );
