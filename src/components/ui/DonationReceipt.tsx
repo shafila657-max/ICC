@@ -119,8 +119,8 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
             </div>
             <h2 className="text-xl font-extrabold tracking-tight" style={{ color: "#ffffff" }}>ICC Donation Receipt</h2>
             <p className="text-xs mt-1 font-medium" style={{ color: "#6ee7b7" }}>Islamic Cultural Centre</p>
-            <div className="mt-3 inline-block px-3 py-1 rounded-full border" style={{ backgroundColor: "rgba(255, 255, 255, 0.1)", borderColor: "rgba(255, 255, 255, 0.2)" }}>
-              <p className="text-[10px] font-mono tracking-widest" style={{ color: "rgba(255, 255, 255, 0.8)" }}>#{data.receiptId}</p>
+            <div className="mt-3 inline-block px-3 py-1 rounded-full border" style={{ backgroundColor: "rgba(255, 255, 255, 0.18)", borderColor: "rgba(255, 255, 255, 0.35)" }}>
+              <p className="text-[10px] font-mono tracking-widest font-bold" style={{ color: "#ffffff" }}>#{data.receiptId}</p>
             </div>
           </div>
 
@@ -140,7 +140,7 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
           </div>
 
           {/* Details */}
-          <div className="px-8 pb-4 space-y-0">
+          <div className="px-8 pb-4">
             {[
               { label: "Donor Name", value: data.donorName, icon: "👤" },
               { label: "Fund", value: data.fund, icon: "🕌" },
@@ -148,12 +148,35 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
               ...(data.donorPhone ? [{ label: "Contact", value: data.donorPhone, icon: "📱" }] : []),
               ...(data.message ? [{ label: "Note", value: data.message.replace(/\[Fund:.*?\]\s*/, ""), icon: "📜" }] : []),
             ].map((item, i, arr) => (
-              <div key={item.label} className="flex items-center justify-between py-2.5" style={{ borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none" }}>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{item.icon}</span>
-                  <span className="text-xs font-medium" style={{ color: "#9ca3af" }}>{item.label}</span>
+              <div
+                key={item.label}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingTop: "10px",
+                  paddingBottom: "10px",
+                  borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "14px", lineHeight: "1.2" }}>{item.icon}</span>
+                  <span style={{ fontSize: "12px", fontWeight: 500, color: "#6b7280", lineHeight: "1.4" }}>{item.label}</span>
                 </div>
-                <span className="text-xs font-bold text-right max-w-[55%] truncate" style={{ color: "#111827" }}>{item.value}</span>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    color: "#111827",
+                    textAlign: "right",
+                    maxWidth: "60%",
+                    wordBreak: "break-word",
+                    lineHeight: "1.4",
+                    display: "block",
+                  }}
+                >
+                  {item.value}
+                </div>
               </div>
             ))}
           </div>
