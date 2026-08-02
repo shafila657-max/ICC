@@ -544,11 +544,12 @@ function AdminDashboardContent() {
   const totalDonations = donationsList.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   const avgDonation = donationsList.length > 0 ? totalDonations / donationsList.length : 0;
 
-  const filteredUsers = usersList.filter(
-    (u) =>
-      u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = usersList.filter((u) => {
+    const matchesSearch = u.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || u.email.toLowerCase().includes(searchQuery.toLowerCase());
+    if (activeOrg === "acsa" && u.role !== "student") return false;
+    if (activeOrg === "asmar" && u.role !== "alumni") return false;
+    return matchesSearch;
+  });
 
   const viewTab = (activeTab === "acsa" || activeTab === "asmar") ? subTab : activeTab;
 
@@ -613,10 +614,34 @@ function AdminDashboardContent() {
           {/* Stats Grid Header */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: "Total Users", value: String(usersList.length), change: "Live Sync", icon: Users, color: "from-emerald-500 to-emerald-600" },
-              { label: "Pending Approvals", value: String(pendingUsersList.length), change: "Review Required", icon: UserCheck, color: "from-amber-500 to-amber-600" },
-              { label: "Active Programs", value: String(programsList.length), change: "Program Builder", icon: GraduationCap, color: "from-teal-500 to-teal-600" },
-              { label: "Donations", value: formatCurrency(totalDonations), change: `${donationsList.length} Raised`, icon: DollarSign, color: "from-gold-500 to-gold-600" },
+              {
+                label: activeOrg === "icc" ? "Total Users" : activeOrg === "acsa" ? "Total Students" : "Total Alumni",
+                value: String(activeOrg === "icc" ? usersList.length : usersList.filter(u => u.role === (activeOrg === "acsa" ? "student" : "alumni")).length),
+                change: "Live Sync",
+                icon: Users,
+                color: "from-emerald-500 to-emerald-600"
+              },
+              {
+                label: "Pending Approvals",
+                value: String(activeOrg === "icc" ? pendingUsersList.length : pendingUsersList.filter(u => u.role === (activeOrg === "acsa" ? "student" : "alumni")).length),
+                change: "Review Required",
+                icon: UserCheck,
+                color: "from-amber-500 to-amber-600"
+              },
+              {
+                label: "Active Programs",
+                value: String(programsList.length),
+                change: "Program Builder",
+                icon: GraduationCap,
+                color: "from-teal-500 to-teal-600"
+              },
+              {
+                label: activeOrg === "icc" ? "Donations" : "Announcements",
+                value: activeOrg === "icc" ? formatCurrency(totalDonations) : String(announcementsList.length),
+                change: activeOrg === "icc" ? `${donationsList.length} Raised` : "Active",
+                icon: activeOrg === "icc" ? DollarSign : Megaphone,
+                color: "from-gold-500 to-gold-600"
+              }
             ].map((stat) => (
               <Card key={stat.label} className="relative overflow-hidden group">
                 <div className="flex items-start justify-between">
@@ -640,7 +665,7 @@ function AdminDashboardContent() {
               Quick Admin Actions:
             </span>
             <Button size="sm" onClick={() => setActiveTab("onboarding")}>
-              <UserCheck className="h-4 w-4" /> Review Pending Alumni ({pendingUsersList.length})
+              <UserCheck className="h-4 w-4" /> Review Pending {activeOrg === 'icc' ? 'Users' : activeOrg === 'acsa' ? 'Students' : 'Alumni'} ({activeOrg === "icc" ? pendingUsersList.length : pendingUsersList.filter(u => u.role === (activeOrg === "acsa" ? "student" : "alumni")).length})
             </Button>
             <Button size="sm" variant="gold" onClick={() => setShowProgramModal(true)}>
               <Plus className="h-4 w-4" /> Create New Program
@@ -658,15 +683,17 @@ function AdminDashboardContent() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-sand-900 text-base">Pending Account Approvals</h3>
                 <button onClick={() => setActiveTab("onboarding")} className="text-xs font-bold text-emerald-600 hover:underline">
-                  Review All ({pendingUsersList.length}) →
+                  Review All →
                 </button>
               </div>
               <div className="space-y-3">
-                {pendingUsersList.length === 0 ? (
-                  <p className="text-xs text-sand-400 italic py-4 text-center">No pending user onboarding requests.</p>
-                ) : (
-                  pendingUsersList.slice(0, 3).map((u) => (
-                    <div key={u.id} className="p-3 rounded-xl bg-amber-50/50 border border-amber-200 flex items-center justify-between gap-3">
+                {(() => {
+                  const displayUsers = activeOrg === "icc" ? pendingUsersList : pendingUsersList.filter(u => u.role === (activeOrg === "acsa" ? "student" : "alumni"));
+                  return displayUsers.length === 0 ? (
+                    <p className="text-xs text-sand-400 italic py-4 text-center">No pending {activeOrg === 'icc' ? 'user' : activeOrg === 'acsa' ? 'student' : 'alumni'} onboarding requests.</p>
+                  ) : (
+                    displayUsers.slice(0, 3).map((u) => (
+                      <div key={u.id} className="p-3 rounded-xl bg-amber-50/50 border border-amber-200 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <Avatar name={u.full_name} size="sm" />
                         <div>
@@ -684,7 +711,7 @@ function AdminDashboardContent() {
                       </div>
                     </div>
                   ))
-                )}
+                )})()}
               </div>
             </Card>
 
