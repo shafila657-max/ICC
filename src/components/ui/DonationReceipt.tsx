@@ -47,26 +47,52 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
   };
 
   const shareImage = async () => {
+    const text = `✅ *ICC Donation Receipt*\n\n🕌 *Organization:* ICC\n📋 *Fund:* ${data.fund}\n💰 *Amount:* ${formattedAmount}\n📅 *Date:* ${data.date}\n👤 *Donor:* ${data.donorName}\n\n_JazakAllah Khair!_\n🌐 icc-zeta.vercel.app`;
+    const phone = data.donorPhone ? data.donorPhone.replace(/[^0-9]/g, "") : "";
+    const waUrl = phone
+      ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+    // Try native file share first if supported on mobile
+    if (cardRef.current && navigator.canShare) {
+      setLoading("share");
+      try {
+        const { default: html2canvas } = await import("html2canvas");
+        const canvas = await html2canvas(cardRef.current, { scale: 2, useCORS: true, backgroundColor: null, logging: false });
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+        
+        if (blob) {
+          const file = new File([blob], `ICC-Receipt-${data.receiptId}.png`, { type: "image/png" });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({ files: [file], title: "ICC Donation Receipt", text });
+            setLoading(null);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("Native file share bypassed:", err);
+      }
+      setLoading(null);
+    }
+
+    // Direct fallback for web/desktop: open WhatsApp link directly
+    window.open(waUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const downloadImage = async () => {
     if (!cardRef.current) return;
     setLoading("share");
     try {
       const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(cardRef.current, { scale: 3, useCORS: true, backgroundColor: null, logging: false });
-      canvas.toBlob(async (blob) => {
-        if (!blob) { setLoading(null); return; }
-        const file = new File([blob], `ICC-Receipt-${data.receiptId}.png`, { type: "image/png" });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: "ICC Donation Receipt", text: `Donation Receipt - ${formattedAmount}` });
-        } else {
-          const text = `✅ *ICC Donation Receipt*\n\n📋 *Fund:* ${data.fund}\n💰 *Amount:* ${formattedAmount}\n📅 *Date:* ${data.date}\n👤 *Donor:* ${data.donorName}\n\n_JazakAllah Khair!_\n🌐 icc-zeta.vercel.app`;
-          const phone = data.donorPhone?.replace(/[^0-9]/g, "");
-          const url = phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
-          window.open(url, "_blank");
-        }
-        setLoading(null);
-      }, "image/png");
+      const image = canvas.toDataURL("image/png");
+      const link = document.createElement("a");
+      link.href = image;
+      link.download = `ICC-Receipt-${data.receiptId}.png`;
+      link.click();
     } catch (e) {
-      console.error("Share failed:", e);
+      console.error("Image download failed:", e);
+    } finally {
       setLoading(null);
     }
   };
@@ -150,17 +176,34 @@ export default function DonationReceipt({ data, onClose }: DonationReceiptProps)
         </div>
 
         {/* Buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={generatePDF} disabled={loading !== null} className="flex items-center justify-center gap-2 px-4 py-3 bg-white text-emerald-800 font-bold rounded-2xl shadow-lg hover:bg-emerald-50 transition-all disabled:opacity-60 text-sm">
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={generatePDF}
+            disabled={loading !== null}
+            className="flex items-center justify-center gap-1.5 px-3 py-3 bg-white text-emerald-800 font-bold rounded-2xl shadow-lg hover:bg-emerald-50 transition-all disabled:opacity-60 text-xs"
+          >
             {loading === "pdf" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Download PDF
+            PDF Card
           </button>
-          <button onClick={shareImage} disabled={loading !== null} className="flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white font-bold rounded-2xl shadow-lg hover:bg-green-700 transition-all disabled:opacity-60 text-sm">
-            {loading === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
-            {data.donorPhone ? "Send to WhatsApp" : "Share Receipt"}
+          <button
+            onClick={downloadImage}
+            disabled={loading !== null}
+            className="flex items-center justify-center gap-1.5 px-3 py-3 bg-emerald-100 text-emerald-900 font-bold rounded-2xl shadow-lg hover:bg-emerald-200 transition-all disabled:opacity-60 text-xs"
+          >
+            {loading === "share" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Image Card
+          </button>
+          <button
+            onClick={shareImage}
+            className="flex items-center justify-center gap-1.5 px-3 py-3 bg-green-600 text-white font-bold rounded-2xl shadow-lg hover:bg-green-700 transition-all text-xs"
+          >
+            <MessageCircle className="h-4 w-4" />
+            WhatsApp
           </button>
         </div>
-        <p className="text-white/40 text-center text-[10px]">Share via WhatsApp sends this card image directly to the donor</p>
+        <p className="text-white/50 text-center text-[10px]">
+          Click <strong>WhatsApp</strong> to chat, or download the <strong>PDF/Image Card</strong> to attach
+        </p>
       </div>
     </div>
   );
