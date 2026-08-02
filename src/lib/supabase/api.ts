@@ -677,3 +677,121 @@ export async function rejectUserProfile(userId: string): Promise<{ success: bool
     return { success: false, error: err.message };
   }
 }
+
+/* =============================================
+ * FOOD RATES & SITE SETTINGS
+ * ============================================= */
+
+export interface FoodRate {
+  id: string;
+  item_name: string;
+  per_child_cost: number;
+  total_cost: number;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+const DEFAULT_FOOD_RATES: FoodRate[] = [
+  { id: "1", item_name: "രാവിലെ സാധാ ചായ കടി (നാസ്ത)", per_child_cost: 30, total_cost: 4500, sort_order: 1, is_active: true, created_at: "" },
+  { id: "2", item_name: "രാവിലെ പൊറോട്ട, ചിക്കൻ", per_child_cost: 45, total_cost: 6750, sort_order: 2, is_active: true, created_at: "" },
+  { id: "3", item_name: "ഉച്ചഭക്ഷണം ഫിഷ്കറി, സാധാ ചോറ്", per_child_cost: 33, total_cost: 4950, sort_order: 3, is_active: true, created_at: "" },
+  { id: "4", item_name: "ഇറച്ചിക്കറി, സാധാ ചോറ്", per_child_cost: 40, total_cost: 6000, sort_order: 4, is_active: true, created_at: "" },
+  { id: "5", item_name: "ചിക്കൻ ഉപ്പേരിച്ചത്, സാധാ ചോറ്", per_child_cost: 55, total_cost: 8250, sort_order: 5, is_active: true, created_at: "" },
+  { id: "6", item_name: "ഇറച്ചി വറട്ട്, സാധാ ചോറ്", per_child_cost: 58, total_cost: 8700, sort_order: 6, is_active: true, created_at: "" },
+  { id: "7", item_name: "ഇറച്ചിക്കറി, തേങ്ങാചോറ്", per_child_cost: 50, total_cost: 7500, sort_order: 7, is_active: true, created_at: "" },
+  { id: "8", item_name: "ബീഫ് ബിരിയാണി", per_child_cost: 85, total_cost: 12750, sort_order: 8, is_active: true, created_at: "" },
+  { id: "9", item_name: "ചിക്കൻ ബിരിയാണി", per_child_cost: 80, total_cost: 12000, sort_order: 9, is_active: true, created_at: "" },
+  { id: "10", item_name: "മന്തി", per_child_cost: 80, total_cost: 12000, sort_order: 10, is_active: true, created_at: "" },
+  { id: "11", item_name: "ബീഫ്, നെയ്ച്ചോറ്", per_child_cost: 75, total_cost: 11250, sort_order: 11, is_active: true, created_at: "" },
+  { id: "12", item_name: "ചിക്കൻ, നെയ്ച്ചോറ്", per_child_cost: 70, total_cost: 10500, sort_order: 12, is_active: true, created_at: "" },
+  { id: "13", item_name: "വൈകുന്നേരം ചായ, കടി", per_child_cost: 17, total_cost: 2550, sort_order: 13, is_active: true, created_at: "" },
+  { id: "14", item_name: "പായസം", per_child_cost: 10, total_cost: 1500, sort_order: 14, is_active: true, created_at: "" },
+  { id: "15", item_name: "ഒരു ദിവസത്തെ സാധാ ഭക്ഷണം", per_child_cost: 120, total_cost: 18000, sort_order: 15, is_active: true, created_at: "" },
+];
+
+export async function fetchFoodRates(): Promise<FoodRate[]> {
+  if (!isSupabaseConfigured()) return DEFAULT_FOOD_RATES;
+  try {
+    const { data, error } = await supabase
+      .from("food_rates")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+    if (error || !data || data.length === 0) return DEFAULT_FOOD_RATES;
+    return data as FoodRate[];
+  } catch {
+    return DEFAULT_FOOD_RATES;
+  }
+}
+
+export async function fetchAllFoodRates(): Promise<FoodRate[]> {
+  if (!isSupabaseConfigured()) return DEFAULT_FOOD_RATES;
+  try {
+    const { data, error } = await supabase
+      .from("food_rates")
+      .select("*")
+      .order("sort_order", { ascending: true });
+    if (error || !data || data.length === 0) return DEFAULT_FOOD_RATES;
+    return data as FoodRate[];
+  } catch {
+    return DEFAULT_FOOD_RATES;
+  }
+}
+
+export async function createFoodRate(rate: { item_name: string; per_child_cost: number; total_cost: number; sort_order?: number }): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase.from("food_rates").insert([rate]);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateFoodRate(id: string, updates: Partial<FoodRate>): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase.from("food_rates").update(updates).eq("id", id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deleteFoodRate(id: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase.from("food_rates").delete().eq("id", id);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function fetchSetting(key: string, fallback = ""): Promise<string> {
+  if (!isSupabaseConfigured()) return fallback;
+  try {
+    const { data, error } = await supabase.from("site_settings").select("value").eq("key", key).single();
+    if (error || !data) return fallback;
+    return data.value;
+  } catch {
+    return fallback;
+  }
+}
+
+export async function updateSetting(key: string, value: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured()) return { success: true };
+  try {
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}

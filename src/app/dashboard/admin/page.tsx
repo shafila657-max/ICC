@@ -64,8 +64,14 @@ import {
   updateProgram,
   deleteProgram,
   uploadImageToSupabase,
+  fetchAllFoodRates,
+  createFoodRate,
+  updateFoodRate,
+  deleteFoodRate,
+  fetchSetting,
+  updateSetting,
 } from "@/lib/supabase/api";
-import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole, Program } from "@/lib/types";
+import type { Announcement, EventItem, Donation, Profile, GalleryItem, UserRole, Program, FoodRate } from "@/lib/types";
 
 /* ===== Mock Fallback Users ===== */
 const MOCK_USERS: Profile[] = [
@@ -132,6 +138,18 @@ function AdminDashboardContent() {
   const [donationsList, setDonationsList] = useState<Donation[]>(DONATIONS as Donation[]);
   const [programsList, setProgramsList] = useState<Program[]>(PROGRAMS as Program[]);
 
+  // Food Rates & Settings State
+  const [foodRates, setFoodRates] = useState<FoodRate[]>([]);
+  const [studentCount, setStudentCount] = useState("150");
+  const [isEditingSettings, setIsEditingSettings] = useState(false);
+  const [showFoodRateModal, setShowFoodRateModal] = useState(false);
+  const [editingFoodRate, setEditingFoodRate] = useState<FoodRate | null>(null);
+  
+  const [frItemName, setFrItemName] = useState("");
+  const [frPerChildCost, setFrPerChildCost] = useState("");
+  const [frTotalCost, setFrTotalCost] = useState("");
+  const [frSortOrder, setFrSortOrder] = useState("");
+
   // User Form
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
@@ -186,6 +204,12 @@ function AdminDashboardContent() {
 
     const dbDonations = await fetchDonations();
     if (dbDonations.length > 0) setDonationsList(dbDonations);
+
+    const dbFoodRates = await fetchAllFoodRates();
+    setFoodRates(dbFoodRates);
+
+    const dbStudentCount = await fetchSetting("student_count", "150");
+    setStudentCount(dbStudentCount);
 
     const dbPrograms = await fetchPrograms(org);
     setProgramsList(dbPrograms);
@@ -476,6 +500,7 @@ function AdminDashboardContent() {
   };
 
   const handleDeleteEvent = async (id: string) => {
+    if (!window.confirm("Delete this event?")) return;
     const result = await deleteEvent(id);
     if (result.success) {
       triggerFeedback("success", "Event deleted");
@@ -484,6 +509,92 @@ function AdminDashboardContent() {
     } else {
       triggerFeedback("error", result.error || "Failed to delete event");
     }
+  };
+
+  /* =============================================
+   * FOOD RATES & SETTINGS HANDLERS
+   * ============================================= */
+
+  const handleSaveSettings = async () => {
+    setIsSubmitting(true);
+    const { success, error } = await updateSetting("student_count", studentCount);
+    if (success) {
+      setIsEditingSettings(false);
+      triggerFeedback("success", "Settings updated successfully.");
+    } else {
+      triggerFeedback("error", error || "Failed to update settings.");
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleOpenFoodRateModal = (rate?: FoodRate) => {
+    if (rate) {
+      setEditingFoodRate(rate);
+      setFrItemName(rate.item_name);
+      setFrPerChildCost(String(rate.per_child_cost));
+      setFrTotalCost(String(rate.total_cost));
+      setFrSortOrder(String(rate.sort_order));
+    } else {
+      setEditingFoodRate(null);
+      setFrItemName("");
+      setFrPerChildCost("");
+      setFrTotalCost("");
+      setFrSortOrder(String(foodRates.length + 1));
+    }
+    setShowFoodRateModal(true);
+  };
+
+  const handleSaveFoodRate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    const data = {
+      item_name: frItemName,
+      per_child_cost: Number(frPerChildCost),
+      total_cost: Number(frTotalCost),
+      sort_order: Number(frSortOrder),
+    };
+
+    let result;
+    if (editingFoodRate) {
+      result = await updateFoodRate(editingFoodRate.id, data);
+    } else {
+      result = await createFoodRate(data);
+    }
+
+    if (result.success) {
+      await refreshAllData();
+      setShowFoodRateModal(false);
+      triggerFeedback("success", `Food rate ${editingFoodRate ? "updated" : "created"}.`);
+    } else {
+      triggerFeedback("error", result.error || "Failed to save food rate.");
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleToggleFoodRateStatus = async (id: string, currentStatus: boolean) => {
+    setIsSubmitting(true);
+    const { success, error } = await updateFoodRate(id, { is_active: !currentStatus });
+    if (success) {
+      await refreshAllData();
+      triggerFeedback("success", "Food rate status updated.");
+    } else {
+      triggerFeedback("error", error || "Failed to update status.");
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleDeleteFoodRate = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this food rate item?")) return;
+    setIsSubmitting(true);
+    const { success, error } = await deleteFoodRate(id);
+    if (success) {
+      await refreshAllData();
+      triggerFeedback("success", "Food rate deleted.");
+    } else {
+      triggerFeedback("error", error || "Failed to delete food rate.");
+    }
+    setIsSubmitting(false);
   };
 
   /* ===== Gallery Handlers ===== */
@@ -1154,6 +1265,107 @@ function AdminDashboardContent() {
               </tbody>
             </table>
           </div>
+
+          {/* Food Rates Management */}
+          <div className="mt-8 border-t border-sand-200 pt-8">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-semibold text-sand-900">🍽️ Food Gift Rates Management</h4>
+              <Button size="sm" onClick={() => handleOpenFoodRateModal()}>
+                <Plus className="h-4 w-4" /> Add Food Item
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Settings Section */}
+              <div className="lg:col-span-1 space-y-4">
+                <div className="p-4 rounded-xl bg-sand-50 border border-sand-200">
+                  <h5 className="font-semibold text-sand-900 mb-3 text-sm">Donation Settings</h5>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-sand-600 mb-1">Total Students Count</label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={studentCount}
+                          onChange={(e) => setStudentCount(e.target.value)}
+                          disabled={!isEditingSettings}
+                        />
+                        {isEditingSettings ? (
+                          <Button size="sm" variant="success" onClick={handleSaveSettings} disabled={isSubmitting}>
+                            <CheckCircle2 className="h-4 w-4" /> Save
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="secondary" onClick={() => setIsEditingSettings(true)}>
+                            <Pencil className="h-4 w-4" /> Edit
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-sand-400 mt-1">This appears on the top right of the food rate card.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Food Rates Table */}
+              <div className="lg:col-span-2 overflow-x-auto border border-sand-200 rounded-xl">
+                <table className="w-full text-sm">
+                  <thead className="bg-sand-100">
+                    <tr>
+                      <th className="text-left px-4 py-2 font-semibold text-sand-700">Sort</th>
+                      <th className="text-left px-4 py-2 font-semibold text-sand-700">Item Name</th>
+                      <th className="text-right px-4 py-2 font-semibold text-sand-700">Per Child</th>
+                      <th className="text-right px-4 py-2 font-semibold text-sand-700">Total</th>
+                      <th className="text-center px-4 py-2 font-semibold text-sand-700">Status</th>
+                      <th className="text-center px-4 py-2 font-semibold text-sand-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {foodRates.map((rate) => (
+                      <tr key={rate.id} className={`border-t border-sand-100 ${!rate.is_active ? 'bg-sand-50 opacity-60' : 'bg-white'}`}>
+                        <td className="px-4 py-2 text-sand-500 font-mono">{rate.sort_order}</td>
+                        <td className="px-4 py-2 font-medium text-sand-900">{rate.item_name}</td>
+                        <td className="px-4 py-2 text-right text-emerald-600 font-semibold">₹{rate.per_child_cost}</td>
+                        <td className="px-4 py-2 text-right text-emerald-700 font-bold">₹{rate.total_cost}</td>
+                        <td className="px-4 py-2 text-center">
+                          <button
+                            onClick={() => handleToggleFoodRateStatus(rate.id, rate.is_active)}
+                            disabled={isSubmitting}
+                            className={`px-2 py-1 rounded text-xs font-medium cursor-pointer ${
+                              rate.is_active ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {rate.is_active ? "Active" : "Inactive"}
+                          </button>
+                        </td>
+                        <td className="px-4 py-2 text-center">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => handleOpenFoodRateModal(rate)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFoodRate(rate.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {foodRates.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-6 text-center text-sand-500">
+                          No food rates found. Click "Add Food Item" to create one.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </Card>
       )}
 
@@ -1581,6 +1793,54 @@ function AdminDashboardContent() {
 
           <Button type="submit" className="w-full" disabled={isSubmitting || !galleryFile}>
             {isSubmitting ? "Uploading to Supabase Storage..." : "Upload to Supabase & Save"}
+          </Button>
+        </form>
+      </Modal>
+      {/* Food Rate Modal */}
+      <Modal
+        isOpen={showFoodRateModal}
+        onClose={() => setShowFoodRateModal(false)}
+        title={editingFoodRate ? "Edit Food Rate" : "Add New Food Rate"}
+      >
+        <form className="space-y-4" onSubmit={handleSaveFoodRate}>
+          <Input
+            label="Item Name (Malayalam/English)"
+            placeholder="e.g. രാവിലെ സാധാ ചായ കടി (നാസ്ത)"
+            value={frItemName}
+            onChange={(e) => setFrItemName(e.target.value)}
+            required
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Per Child Cost (₹)"
+              type="number"
+              min="0"
+              step="0.01"
+              value={frPerChildCost}
+              onChange={(e) => setFrPerChildCost(e.target.value)}
+              required
+            />
+            <Input
+              label="Total Cost (₹)"
+              type="number"
+              min="0"
+              step="0.01"
+              value={frTotalCost}
+              onChange={(e) => setFrTotalCost(e.target.value)}
+              required
+            />
+          </div>
+          <Input
+            label="Sort Order"
+            type="number"
+            min="1"
+            value={frSortOrder}
+            onChange={(e) => setFrSortOrder(e.target.value)}
+            required
+            helpText="Determines the order it appears in the table (1 = top)"
+          />
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : editingFoodRate ? "Update Food Rate" : "Create Food Rate"}
           </Button>
         </form>
       </Modal>

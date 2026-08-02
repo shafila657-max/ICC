@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Heart,
   HandHeart,
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui";
 import { formatCurrency } from "@/lib/utils";
 import { DONATION_PRESETS } from "@/lib/constants";
-import { recordDonation } from "@/lib/supabase/api";
+import { recordDonation, fetchFoodRates, fetchSetting, FoodRate } from "@/lib/supabase/api";
 
 const UPI_ID = "fcbizmdakhw@freecharge";
 const UPI_PAYEE_NAME = "ICC";
@@ -117,6 +117,19 @@ export default function Donations() {
   const [donorPhone, setDonorPhone] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
   const [paymentTab, setPaymentTab] = useState<"form" | "qr">("form");
+
+  const [foodRates, setFoodRates] = useState<FoodRate[]>([]);
+  const [studentCount, setStudentCount] = useState("150");
+
+  useEffect(() => {
+    async function loadData() {
+      const rates = await fetchFoodRates();
+      const count = await fetchSetting("student_count", "150");
+      setFoodRates(rates);
+      setStudentCount(count);
+    }
+    loadData();
+  }, []);
 
   const activeAmount = selectedAmount || Number(customAmount) || 0;
 
@@ -375,11 +388,11 @@ export default function Donations() {
                 <h4 className="font-extrabold text-white text-sm flex items-center gap-2">
                   🍽️ ഭക്ഷണ നിരക്ക് — Food Gift Rates
                 </h4>
-                <span className="text-[10px] text-emerald-200 font-medium">150 Students</span>
+                <span className="text-[10px] text-emerald-200 font-medium">{studentCount} Students</span>
               </div>
               <div className="max-h-64 overflow-y-auto">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0">
+                  <thead className="sticky top-0 z-10 shadow-sm">
                     <tr className="bg-sand-100 text-sand-600">
                       <th className="text-left px-4 py-2 font-bold">ഇനം (Item)</th>
                       <th className="text-right px-4 py-2 font-bold whitespace-nowrap">Per Child ₹</th>
@@ -387,33 +400,17 @@ export default function Donations() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { item: "രാവിലെ സാധാ ചായ കടി (നാസ്ത)", per: 30, total: 4500 },
-                      { item: "രാവിലെ പൊറോട്ട, ചിക്കൻ", per: 45, total: 6750 },
-                      { item: "ഉച്ചഭക്ഷണം ഫിഷ്കറി, സാധാ ചോറ്", per: 33, total: 4950 },
-                      { item: "ഇറച്ചിക്കറി, സാധാ ചോറ്", per: 40, total: 6000 },
-                      { item: "ചിക്കൻ ഉപ്പേരിച്ചത്, സാധാ ചോറ്", per: 55, total: 8250 },
-                      { item: "ഇറച്ചി വറട്ട്, സാധാ ചോറ്", per: 58, total: 8700 },
-                      { item: "ഇറച്ചിക്കറി, തേങ്ങാചോറ്", per: 50, total: 7500 },
-                      { item: "ബീഫ് ബിരിയാണി", per: 85, total: 12750 },
-                      { item: "ചിക്കൻ ബിരിയാണി", per: 80, total: 12000 },
-                      { item: "മന്തി", per: 80, total: 12000 },
-                      { item: "ബീഫ്, നെയ്ച്ചോറ്", per: 75, total: 11250 },
-                      { item: "ചിക്കൻ, നെയ്ച്ചോറ്", per: 70, total: 10500 },
-                      { item: "വൈകുന്നേരം ചായ, കടി", per: 17, total: 2550 },
-                      { item: "പായസം", per: 10, total: 1500 },
-                      { item: "ഒരു ദിവസത്തെ സാധാ ഭക്ഷണം", per: 120, total: 18000 },
-                    ].map((row, i) => (
+                    {foodRates.map((row, i) => (
                       <tr
-                        key={i}
-                        onClick={() => { setSelectedAmount(row.total); setCustomAmount(""); }}
+                        key={row.id}
+                        onClick={() => { setSelectedAmount(row.total_cost); setCustomAmount(""); }}
                         className={`border-b border-sand-100 cursor-pointer transition-colors hover:bg-emerald-50 ${
-                          selectedAmount === row.total ? "bg-emerald-50 font-bold" : i % 2 === 0 ? "bg-white" : "bg-sand-50/50"
+                          selectedAmount === row.total_cost ? "bg-emerald-50 font-bold" : i % 2 === 0 ? "bg-white" : "bg-sand-50/50"
                         }`}
                       >
-                        <td className="px-4 py-2.5 text-sand-800">{row.item}</td>
-                        <td className="px-4 py-2.5 text-right text-sand-600 font-semibold">₹{row.per}</td>
-                        <td className="px-4 py-2.5 text-right text-emerald-700 font-bold">₹{row.total.toLocaleString()}</td>
+                        <td className="px-4 py-2.5 text-sand-800">{row.item_name}</td>
+                        <td className="px-4 py-2.5 text-right text-sand-600 font-semibold">₹{row.per_child_cost}</td>
+                        <td className="px-4 py-2.5 text-right text-emerald-700 font-bold">₹{row.total_cost.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
