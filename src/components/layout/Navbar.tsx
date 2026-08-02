@@ -60,7 +60,7 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-emerald-50/80",
+                  "px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all hover:bg-emerald-50/80",
                   isScrolled
                     ? "text-sand-600 hover:text-emerald-700"
                     : "text-white/80 hover:text-white hover:bg-white/10"
@@ -78,8 +78,8 @@ export default function Navbar() {
                 variant={isScrolled ? "ghost" : "outline"}
                 size="sm"
                 className={cn(
-                  !isScrolled &&
-                    "border-white/30 text-white hover:bg-white/10"
+                  !isScrolled && "border-white/30 text-white hover:bg-white/10",
+                  "whitespace-nowrap"
                 )}
               >
                 Sign In
