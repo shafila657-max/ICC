@@ -15,6 +15,8 @@ import {
   Smartphone,
   CreditCard,
   QrCode,
+  MessageCircle,
+  Share2,
 } from "lucide-react";
 import {
   Container,
@@ -112,6 +114,7 @@ export default function Donations() {
   const [donorEmail, setDonorEmail] = useState("");
   const [duaNote, setDuaNote] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [donorPhone, setDonorPhone] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success">("idle");
   const [paymentTab, setPaymentTab] = useState<"form" | "qr">("form");
 
@@ -120,14 +123,15 @@ export default function Donations() {
   const handleOpenCardModal = (card: typeof DONATION_CARDS[0]) => {
     setSelectedCard(card);
     setShowModal(true);
+    setStatus("idle");
   };
 
-  const handleDonationSubmit = async () => {
+  const handleConfirmPayment = async () => {
     if (activeAmount <= 0) return;
     setStatus("submitting");
 
     await recordDonation({
-      donor_name: isAnonymous ? "Anonymous" : donorName || "Supporter",
+      donor_name: donorName || "Supporter",
       donor_email: donorEmail || "donor@example.com",
       amount: activeAmount,
       category: selectedCard.id as any,
@@ -136,16 +140,12 @@ export default function Donations() {
     });
 
     setStatus("success");
-    setTimeout(() => {
-      setShowModal(false);
-      setStatus("idle");
-      setCustomAmount("");
-      setSelectedAmount(100);
-      setDonorName("");
-      setDonorEmail("");
-      setDuaNote("");
-    }, 2500);
   };
+
+  const receiptText = `✅ *ICC Donation Receipt*\n\n🕌 *Organization:* ICC\n📋 *Fund:* ${selectedCard.title}\n💰 *Amount:* ₹${activeAmount.toLocaleString()}\n📅 *Date:* ${new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}${donorName ? `\n👤 *Donor:* ${donorName}` : ""}${duaNote ? `\n📜 *Dua/Intention:* ${duaNote}` : ""}\n\n_JazakAllah Khair for your generous contribution!_\n_May Allah accept your charity and multiply your reward._\n\n🌐 icc-zeta.vercel.app`;
+
+  const whatsappSelfUrl = `https://wa.me/${donorPhone ? donorPhone.replace(/[^0-9]/g, "") : ""}?text=${encodeURIComponent(receiptText)}`;
+  const whatsappShareUrl = `https://wa.me/?text=${encodeURIComponent(receiptText)}`;
 
   return (
     <section id="donate" className="section-padding relative overflow-hidden">
@@ -274,13 +274,13 @@ export default function Donations() {
         title={selectedCard.title}
       >
         {status === "success" ? (
-          <div className="p-6 text-center space-y-4">
-            <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600">
+          <div className="p-6 text-center space-y-5">
+            <div className="h-16 w-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 animate-bounce">
               <CheckCircle2 className="h-8 w-8" />
             </div>
             <h4 className="text-2xl font-extrabold text-sand-900">JazakAllah Khair!</h4>
             <p className="text-sm text-sand-600">
-              Your contribution of <strong>{formatCurrency(activeAmount)}</strong> to the <strong>{selectedCard.title}</strong> has been received.
+              Your contribution of <strong>₹{activeAmount.toLocaleString()}</strong> to the <strong>{selectedCard.title}</strong> has been recorded.
             </p>
             {duaNote && (
               <div className="p-4 rounded-xl bg-gold-50 border border-gold-200 text-left">
@@ -290,7 +290,68 @@ export default function Donations() {
                 <p className="text-xs text-sand-700 italic">&ldquo;{duaNote}&rdquo;</p>
               </div>
             )}
-            <p className="text-xs text-sand-400">Confirmation receipt sent to {donorEmail || "your email"}.</p>
+
+            {/* Digital Receipt Card */}
+            <div className="p-4 rounded-2xl bg-sand-50 border border-sand-200 text-left space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-sand-500">📄 Digital Receipt</p>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <span className="text-sand-500">Fund:</span>
+                <span className="text-sand-800 font-bold">{selectedCard.title}</span>
+                <span className="text-sand-500">Amount:</span>
+                <span className="text-emerald-700 font-extrabold">₹{activeAmount.toLocaleString()}</span>
+                <span className="text-sand-500">Date:</span>
+                <span className="text-sand-800 font-medium">{new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</span>
+                {donorName && <><span className="text-sand-500">Donor:</span><span className="text-sand-800 font-medium">{donorName}</span></>}
+              </div>
+            </div>
+
+            {/* WhatsApp Share Buttons */}
+            <div className="space-y-3">
+              <p className="text-xs font-bold text-sand-600 uppercase tracking-wider">Share Receipt via WhatsApp</p>
+              
+              {/* Phone number input for direct send */}
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  placeholder="WhatsApp number (e.g. 919447351872)"
+                  value={donorPhone}
+                  onChange={(e) => setDonorPhone(e.target.value)}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-sand-200 text-sm focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+                />
+                <a
+                  href={whatsappSelfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${donorPhone.replace(/[^0-9]/g, "").length >= 10 ? "bg-green-600 text-white hover:bg-green-700 shadow-md" : "bg-sand-200 text-sand-400 pointer-events-none"}`}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Send
+                </a>
+              </div>
+
+              <div className="flex items-center gap-4 text-xs text-sand-400">
+                <span className="h-px flex-1 bg-sand-200" />
+                <span>or</span>
+                <span className="h-px flex-1 bg-sand-200" />
+              </div>
+
+              <a
+                href={whatsappShareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white font-bold text-sm rounded-xl hover:bg-green-700 shadow-md transition-all"
+              >
+                <Share2 className="h-4 w-4" />
+                Share Receipt to Any Contact
+              </a>
+            </div>
+
+            <button
+              onClick={() => { setShowModal(false); setStatus("idle"); setDonorPhone(""); setDonorName(""); setDuaNote(""); setSelectedAmount(100); setCustomAmount(""); }}
+              className="text-xs text-sand-400 hover:text-sand-600 underline cursor-pointer mt-2"
+            >
+              Close
+            </button>
           </div>
         ) : (
           <div className="space-y-4">
@@ -427,7 +488,7 @@ export default function Donations() {
                 />
               </div>
 
-              <div className="text-center space-y-2">
+              <div className="text-center space-y-3">
                 <div className="flex items-center justify-center gap-4 text-xs text-sand-400">
                   <span className="h-px flex-1 bg-sand-200" />
                   <span>or pay directly via app</span>
@@ -440,6 +501,26 @@ export default function Donations() {
                   <Smartphone className="h-5 w-5" />
                   Open UPI App
                 </a>
+              </div>
+
+              {/* Donor Name + Confirm Payment */}
+              <div className="pt-4 border-t border-sand-200 space-y-3">
+                <Input
+                  label="Your Name (for receipt)"
+                  placeholder="Full Name"
+                  value={donorName}
+                  onChange={(e) => setDonorName(e.target.value)}
+                />
+                <Button
+                  className="w-full font-bold py-3.5"
+                  size="lg"
+                  variant="gold"
+                  disabled={activeAmount <= 0 || status === "submitting"}
+                  onClick={handleConfirmPayment}
+                >
+                  <CheckCircle2 className="h-5 w-5 mr-2" />
+                  {status === "submitting" ? "Recording..." : `I've Paid ₹${activeAmount.toLocaleString()} — Get Receipt`}
+                </Button>
               </div>
             </div>
           </div>
