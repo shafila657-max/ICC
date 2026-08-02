@@ -21,7 +21,7 @@ import { fetchGalleryItems, submitContactMessage } from "@/lib/supabase/api";
 export const dynamic = "force-dynamic";
 
 export default async function ASMARPage() {
-  const galleryItems = await fetchGalleryItems();
+  const galleryItems = await fetchGalleryItems("asmar");
   const alumniGallery = galleryItems.slice(0, 4);
 
   async function handleASMARRegistration(formData: FormData) {

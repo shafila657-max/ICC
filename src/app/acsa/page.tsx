@@ -20,8 +20,8 @@ import { fetchGalleryItems, fetchEvents, submitContactMessage } from "@/lib/supa
 export const dynamic = "force-dynamic";
 
 export default async function ACSAPage() {
-  const galleryItems = await fetchGalleryItems();
-  const eventsData = await fetchEvents();
+  const galleryItems = await fetchGalleryItems("acsa");
+  const eventsData = await fetchEvents("acsa");
 
   const studentEvents = eventsData.slice(0, 3);
   const studentGallery = galleryItems.slice(0, 4);

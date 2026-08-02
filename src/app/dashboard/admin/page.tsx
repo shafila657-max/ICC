@@ -86,16 +86,20 @@ const ROLE_BADGE: Record<string, "success" | "info" | "warning" | "gold"> = {
 function AdminDashboardContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab");
+  const orgParam = (searchParams.get("org") || "icc") as "icc" | "acsa" | "asmar";
 
   const [activeTab, setActiveTab] = useState<"overview" | "onboarding" | "programs" | "users" | "announcements" | "events" | "gallery" | "donations">(
     (tabParam as any) || "overview"
   );
+  
+  const [activeOrg, setActiveOrg] = useState<"icc" | "acsa" | "asmar">(orgParam);
 
   useEffect(() => {
     if (tabParam && ["overview", "onboarding", "programs", "users", "announcements", "events", "gallery", "donations"].includes(tabParam)) {
       setActiveTab(tabParam as any);
     }
-  }, [tabParam]);
+    if (orgParam) setActiveOrg(orgParam as any);
+  }, [tabParam, orgParam]);
 
   // Create Modals
   const [showUserModal, setShowUserModal] = useState(false);
@@ -157,7 +161,7 @@ function AdminDashboardContent() {
   const [progCtaText, setProgCtaText] = useState("Register / Get In Touch");
   const [progFile, setProgFile] = useState<File | null>(null);
 
-  const refreshAllData = async () => {
+  const refreshAllData = async (org: "icc" | "acsa" | "asmar" = activeOrg) => {
     const dbUsers = await fetchUserProfiles();
     if (dbUsers.length > 0) {
       setUsersList(dbUsers);
@@ -166,25 +170,25 @@ function AdminDashboardContent() {
       setPendingUsersList(MOCK_USERS.filter((u) => u.is_active === false || u.status === "pending"));
     }
 
-    const dbAnn = await fetchAnnouncements("admin");
+    const dbAnn = await fetchAnnouncements("admin", org);
     if (dbAnn.length > 0) setAnnouncementsList(dbAnn);
 
-    const dbEvents = await fetchEvents();
+    const dbEvents = await fetchEvents(org);
     if (dbEvents.length > 0) setEventsList(dbEvents);
 
-    const dbGallery = await fetchGalleryItems();
+    const dbGallery = await fetchGalleryItems(org);
     if (dbGallery.length > 0) setGalleryList(dbGallery);
 
     const dbDonations = await fetchDonations();
     if (dbDonations.length > 0) setDonationsList(dbDonations);
 
-    const dbPrograms = await fetchPrograms();
+    const dbPrograms = await fetchPrograms(org);
     if (dbPrograms.length > 0) setProgramsList(dbPrograms);
   };
 
   useEffect(() => {
-    refreshAllData();
-  }, []);
+    refreshAllData(activeOrg);
+  }, [activeOrg]);
 
   const triggerFeedback = (type: "success" | "error", message: string) => {
     setActionFeedback({ type, message });
@@ -234,6 +238,7 @@ function AdminDashboardContent() {
       contact_email: progContactEmail,
       cta_text: progCtaText,
       image_url: imageUrl || undefined,
+      organization_id: activeOrg,
     });
     setIsSubmitting(false);
 
@@ -362,6 +367,7 @@ function AdminDashboardContent() {
       content: annContent,
       priority: annPriority,
       target_role: annTarget,
+      organization_id: activeOrg,
     });
     setIsSubmitting(false);
 
@@ -421,6 +427,7 @@ function AdminDashboardContent() {
       date: eventDate,
       time: eventTime,
       location: eventLoc,
+      organization_id: activeOrg,
     });
     setIsSubmitting(false);
 
@@ -502,6 +509,7 @@ function AdminDashboardContent() {
       title: galleryTitle,
       category: galleryCategory,
       image_url: uploadRes.url,
+      organization_id: activeOrg,
     });
     setIsSubmitting(false);
 

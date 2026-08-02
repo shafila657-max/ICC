@@ -25,6 +25,7 @@ export interface Program {
   category: "education" | "relief" | "youth" | "quran";
   image_url?: string;
   is_active: boolean;
+  organization_id?: "icc" | "acsa" | "asmar";
   created_at: string;
   full_content?: string;
   features?: string[];
@@ -43,6 +44,7 @@ export interface Event {
   image_url?: string;
   is_featured: boolean;
   max_attendees?: number;
+  organization_id?: "icc" | "acsa" | "asmar";
   created_at: string;
 }
 
@@ -56,6 +58,7 @@ export interface Announcement {
   target_role: UserRole | "all";
   is_published: boolean;
   author_id: string;
+  organization_id?: "icc" | "acsa" | "asmar";
   created_at: string;
 }
 
@@ -76,6 +79,7 @@ export interface GalleryItem {
   image_url: string;
   category: string;
   description?: string;
+  organization_id?: "icc" | "acsa" | "asmar";
   created_at: string;
 }
 

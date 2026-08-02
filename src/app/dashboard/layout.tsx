@@ -74,6 +74,7 @@ export default function DashboardLayout({
   const [userName, setUserName] = useState("User");
   const [userEmail, setUserEmail] = useState("user@icc.org");
   const [activeTab, setActiveTab] = useState("overview");
+  const [activeOrg, setActiveOrg] = useState("icc");
 
   useEffect(() => {
     const role = (localStorage.getItem("icc_user_role") || "student") as UserRole;
@@ -86,7 +87,9 @@ export default function DashboardLayout({
     if (typeof window !== "undefined") {
       const urlParams = new URLSearchParams(window.location.search);
       const tab = urlParams.get("tab") || "overview";
+      const org = urlParams.get("org") || "icc";
       setActiveTab(tab);
+      setActiveOrg(org);
     }
   }, [pathname]);
 
@@ -99,6 +102,13 @@ export default function DashboardLayout({
   };
 
   const navItems = ROLE_NAV[userRole] || ROLE_NAV.student;
+
+  const dynamicNavItems = navItems.map(item => {
+    if (userRole === "admin") {
+      return { ...item, href: `/dashboard/admin?org=${activeOrg}&tab=${item.tab}` };
+    }
+    return item;
+  });
 
   return (
     <div className="min-h-screen bg-sand-50 flex">
@@ -124,9 +134,38 @@ export default function DashboardLayout({
           </Link>
         </div>
 
+        {userRole === "admin" && (
+          <div className="px-4 py-3 border-b border-sand-100 bg-sand-50/50">
+            <p className="text-[10px] font-bold text-sand-400 uppercase tracking-wider mb-2 px-2">Organization Context</p>
+            <div className="flex flex-col gap-1">
+              <Link 
+                href="/dashboard/admin?org=icc&tab=overview" 
+                onClick={() => { setActiveOrg("icc"); setActiveTab("overview"); }} 
+                className={cn("px-3 py-2 rounded-lg text-sm font-bold transition-colors", activeOrg === "icc" ? "bg-emerald-100 text-emerald-800" : "text-sand-600 hover:bg-sand-100")}
+              >
+                ICC Main
+              </Link>
+              <Link 
+                href="/dashboard/admin?org=acsa&tab=overview" 
+                onClick={() => { setActiveOrg("acsa"); setActiveTab("overview"); }} 
+                className={cn("px-3 py-2 rounded-lg text-sm font-bold transition-colors", activeOrg === "acsa" ? "bg-emerald-100 text-emerald-800" : "text-sand-600 hover:bg-sand-100")}
+              >
+                ACSA (Students)
+              </Link>
+              <Link 
+                href="/dashboard/admin?org=asmar&tab=overview" 
+                onClick={() => { setActiveOrg("asmar"); setActiveTab("overview"); }} 
+                className={cn("px-3 py-2 rounded-lg text-sm font-bold transition-colors", activeOrg === "asmar" ? "bg-emerald-100 text-emerald-800" : "text-sand-600 hover:bg-sand-100")}
+              >
+                ASMAR (Alumni)
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Nav Links */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {dynamicNavItems.map((item) => {
             const isActive =
               userRole === "admin"
                 ? activeTab === item.tab

@@ -69,13 +69,12 @@ export async function uploadImageToSupabase(
  * ============================================= */
 
 /** Fetch active programs */
-export async function fetchPrograms(): Promise<Program[]> {
+export async function fetchPrograms(orgId = "icc"): Promise<Program[]> {
   if (!isSupabaseConfigured()) return PROGRAMS;
   try {
-    const { data, error } = await supabase
-      .from("programs")
-      .select("*")
-      .order("created_at", { ascending: false });
+    let query = supabase.from("programs").select("*").order("created_at", { ascending: false });
+    if (orgId !== "all") query = query.eq("organization_id", orgId);
+    const { data, error } = await query;
     if (error) {
       console.warn("fetchPrograms Supabase error:", error.message);
       return PROGRAMS;
@@ -108,13 +107,12 @@ export async function fetchProgramById(id: string): Promise<Program | null> {
 }
 
 /** Fetch upcoming events */
-export async function fetchEvents(): Promise<EventItem[]> {
+export async function fetchEvents(orgId = "icc"): Promise<EventItem[]> {
   if (!isSupabaseConfigured()) return EVENTS;
   try {
-    const { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .order("date", { ascending: true });
+    let query = supabase.from("events").select("*").order("date", { ascending: true });
+    if (orgId !== "all") query = query.eq("organization_id", orgId);
+    const { data, error } = await query;
     if (error) {
       console.warn("fetchEvents Supabase error:", error.message);
       return EVENTS;
@@ -143,10 +141,12 @@ export async function fetchTestimonials(): Promise<Testimonial[]> {
 }
 
 /** Fetch gallery items */
-export async function fetchGalleryItems(): Promise<GalleryItem[]> {
+export async function fetchGalleryItems(orgId = "icc"): Promise<GalleryItem[]> {
   if (!isSupabaseConfigured()) return GALLERY_ITEMS;
   try {
-    const { data, error } = await supabase.from("gallery_items").select("*").order("created_at", { ascending: false });
+    let query = supabase.from("gallery_items").select("*").order("created_at", { ascending: false });
+    if (orgId !== "all") query = query.eq("organization_id", orgId);
+    const { data, error } = await query;
     if (error) {
       console.warn("fetchGalleryItems Supabase error:", error.message);
       return GALLERY_ITEMS;
@@ -175,17 +175,16 @@ export async function fetchCourses(): Promise<Course[]> {
 }
 
 /** Fetch published announcements for specific target role */
-export async function fetchAnnouncements(role: UserRole | "all" = "all"): Promise<Announcement[]> {
+export async function fetchAnnouncements(role: UserRole | "all" = "all", orgId = "icc"): Promise<Announcement[]> {
   if (!isSupabaseConfigured()) {
     return ANNOUNCEMENTS.filter(
       (a) => a.target_role === "all" || a.target_role === role
     ) as Announcement[];
   }
   try {
-    const { data, error } = await supabase
-      .from("announcements")
-      .select("*")
-      .order("created_at", { ascending: false });
+    let query = supabase.from("announcements").select("*").order("created_at", { ascending: false });
+    if (orgId !== "all") query = query.eq("organization_id", orgId);
+    const { data, error } = await query;
 
     if (error || !data || data.length === 0) {
       return ANNOUNCEMENTS.filter(
@@ -320,6 +319,7 @@ export async function createAnnouncement(announcement: {
   content: string;
   priority: "low" | "medium" | "high";
   target_role: string;
+  organization_id?: "icc" | "acsa" | "asmar";
 }): Promise<{ success: boolean; data?: Announcement; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
@@ -330,6 +330,7 @@ export async function createAnnouncement(announcement: {
         content: announcement.content,
         priority: announcement.priority,
         target_role: announcement.target_role,
+        organization_id: announcement.organization_id || "icc",
         is_published: true,
       }])
       .select()
@@ -380,6 +381,7 @@ export async function createEvent(event: {
   location: string;
   image_url?: string;
   is_featured?: boolean;
+  organization_id?: "icc" | "acsa" | "asmar";
 }): Promise<{ success: boolean; data?: EventItem; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
@@ -393,6 +395,7 @@ export async function createEvent(event: {
         location: event.location,
         image_url: event.image_url,
         is_featured: event.is_featured ?? false,
+        organization_id: event.organization_id || "icc",
       }])
       .select()
       .single();
@@ -439,6 +442,7 @@ export async function createGalleryItem(item: {
   category: string;
   image_url: string;
   description?: string;
+  organization_id?: "icc" | "acsa" | "asmar";
 }): Promise<{ success: boolean; data?: GalleryItem; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
@@ -449,6 +453,7 @@ export async function createGalleryItem(item: {
         category: item.category,
         image_url: item.image_url,
         description: item.description,
+        organization_id: item.organization_id || "icc",
       }])
       .select()
       .single();
@@ -553,6 +558,7 @@ export async function createProgram(program: {
   schedule?: string;
   contact_email?: string;
   cta_text?: string;
+  organization_id?: "icc" | "acsa" | "asmar";
 }): Promise<{ success: boolean; data?: Program; error?: string }> {
   if (!isSupabaseConfigured()) return { success: true };
   try {
@@ -568,6 +574,7 @@ export async function createProgram(program: {
         schedule: program.schedule || "Flexible Schedule",
         contact_email: program.contact_email || "info@icc.org",
         cta_text: program.cta_text || "Register / Get In Touch",
+        organization_id: program.organization_id || "icc",
         is_active: true,
       }])
       .select()

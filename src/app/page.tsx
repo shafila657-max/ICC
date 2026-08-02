@@ -20,10 +20,10 @@ import {
 
 export default async function HomePage() {
   // Asynchronously query live Supabase database tables on every request
-  const programsData = await fetchPrograms();
-  const eventsData = await fetchEvents();
+  const programsData = await fetchPrograms("icc");
+  const eventsData = await fetchEvents("icc");
   const testimonialsData = await fetchTestimonials();
-  const galleryData = await fetchGalleryItems();
+  const galleryData = await fetchGalleryItems("icc");
 
   return (
     <>
